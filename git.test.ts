@@ -6,8 +6,8 @@ import {
 import { gitLastEdit } from "./git.ts";
 
 Deno.test("gitLastEdit: works", async () => {
-    let result = await gitLastEdit("./deps.ts");
-    assertEquals(new Date("2020-08-04T20:27:11.000Z"), result);
+    let result = await gitLastEdit("./build.ts");
+    assertEquals(new Date("2020-08-05T23:14:27.000Z"), result);
 });
 
 Deno.test("gitLastEdit: it gives an error", async () => {

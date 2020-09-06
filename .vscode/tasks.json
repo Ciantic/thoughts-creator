@@ -8,6 +8,12 @@
             "type": "shell",
             "command": "deno",
             "args": ["test", "--allow-run"]
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "deno",
+            "args": ["run", "--allow-read", "--unstable", "--allow-run", "build.ts", ".\\examples"]
         }
     ]
 }
