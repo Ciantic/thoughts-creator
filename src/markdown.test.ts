@@ -19,8 +19,10 @@ var foo: any;
 The paragraph
 `;
 
-const expectedBody = `<h1 id="example-header">Example header</h1>
-<pre><code class="language-typescript"><span class="hljs-keyword">var</span> foo: <span class="hljs-built_in">any</span>;</code></pre>
+const expectedBody = `<h1 id=\"example-header\">Example header</h1>
+
+<pre><code class=\"lang-typescript\"><span class=\"hljs-keyword\">var</span> foo: <span class=\"hljs-built_in\">any</span>;
+</code></pre>
 <p>The paragraph</p>
 `;
 

@@ -2,29 +2,93 @@ import { markdown } from "./markdown.ts";
 
 import { parse } from "https://deno.land/std/flags/mod.ts";
 import { join, extname } from "https://deno.land/std/path/mod.ts";
-import { recursiveReaddir } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
-import { gitLastEdit } from "./git.ts";
+import { gitLastEdit, gitCreated } from "./git.ts";
+// import { layout } from "./layout.tsx";
+import { DbContext } from "./db.ts";
+
+/**
+ * Create database
+ *
+ * @param articleFiles
+ */
+export async function createDatabase(databaseFile: string, articleFiles: string[]) {
+    const db = new DbContext(databaseFile);
+    const result = db.createSchema();
+    if (result.error) {
+        throw new Error("Database creation failed");
+    }
+
+    const dbMaxDate = db.getArticleMaxModifiedOnDisk();
+    const maxDate = dbMaxDate.result;
+
+    const foundFiles = [];
+    for (const articleFile of articleFiles) {
+        const file = await Deno.realPath(articleFile);
+        const stat = await Deno.lstat(articleFile);
+        if (!stat.mtime) {
+            throw new Error("Mtime not fetched for " + file);
+        }
+
+        // If the file is newer than in the database, add or update it
+        if (!maxDate || stat.mtime > maxDate) {
+            const created = await gitCreated(file);
+            const modified = await gitLastEdit(file);
+            db.addArticle({
+                created: created,
+                file: file,
+                hash: "",
+                modified: modified,
+                modified_on_disk: stat.mtime,
+            });
+        }
+        foundFiles.push(file);
+    }
+
+    db.cleanOldArticles(foundFiles);
+
+    return db;
+}
 
 /**
  *
  * @param file
  */
 async function build(file: string) {
+    let file_info = await Deno.lstat(file);
     let contents = await Deno.readFile(file);
     let contents_str = new TextDecoder().decode(contents);
     let markdown_result = markdown(contents_str);
-    let last_edited = await gitLastEdit(file);
-    console.log("last_edited", last_edited);
+    if (!file_info.mtime) {
+        throw new Error("Modification date is missing");
+    }
 
-    return markdown_result;
-}
+    // if (!hasArticle(file, file_info.mtime)) {
+    //     let edited = await gitLastEdit(file);
+    //     let created = await gitCreated(file);
 
-/**
- * Get all markdown files
- * @param dir
- */
-async function getMarkdownFiles(dir: string) {
-    return (await recursiveReaddir(dir)).filter((file) => extname(file) === ".md");
+    //     addArticle({
+    //         created: created,
+    //         file: file,
+    //         hash: "",
+    //         id: 0,
+    //         modified: edited,
+    //         modified_on_disk: file_info.mtime,
+    //     });
+    // }
+
+    return {
+        build: "cache",
+    };
+
+    // return layout({
+    //     created: created,
+    //     lastEdited: edited,
+    //     html: markdown_result.body,
+    //     // link: new URL(""),
+    //     title: "",
+    // });
+
+    // return markdown_result;
 }
 
 /**
@@ -76,11 +140,16 @@ async function runWorkerOnce<R>(worker: Worker, initMessage: any) {
  *
  * @param files Markdown files as list
  */
-async function buildAll(files: string[]) {
+export async function buildAll(db: DbContext) {
     // Chunk the files by threads, and start workers for each file
     const number_of_threads = 16;
+    const files: string[] = []; // TODO: ...
     const file_chunks = chunkInplace(files, number_of_threads);
     const failed_files: { file: string; reason: any }[] = [];
+
+    const maxDate = db.getArticleMaxModifiedOnDisk();
+    if (maxDate.result) {
+    }
 
     for (const files of file_chunks) {
         // Wait for results
@@ -142,30 +211,6 @@ if ("onmessage" in self) {
         }
         worker.close();
     };
-} else if (import.meta.main) {
-    // Is cli instance of build.ts
-    let args = parse(Deno.args);
-    if (args._.length != 1) {
-        console.error("usage: build.ts [DIR]");
-    }
-    let dir = args._[0] as string;
-    let files: string[] = [];
-
-    try {
-        files = await getMarkdownFiles(dir);
-    } catch (e) {
-        if (e instanceof Error) {
-            if (e.name === "NotFound") {
-                console.error("Directory does not exist: ", dir);
-            }
-        }
-        Deno.exit(1);
-    }
-
-    let completed = await buildAll(files);
-    Deno.exit(!completed ? 1 : 0);
-} else {
-    console.log("???");
 }
 
 interface Unknown {

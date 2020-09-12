@@ -7,13 +7,27 @@
             "label": "test",
             "type": "shell",
             "command": "deno",
-            "args": ["test", "--allow-run"]
+            "args": ["test", "-A"]
         },
         {
             "label": "build",
             "type": "shell",
             "command": "deno",
             "args": ["run", "--allow-read", "--unstable", "--allow-run", "build.ts", ".\\examples"]
+        },
+        {
+            "label": "build reload",
+            "type": "shell",
+            "command": "deno",
+            "args": [
+                "run",
+                "--reload",
+                "--allow-read",
+                "--unstable",
+                "--allow-run",
+                "build.ts",
+                ".\\examples"
+            ]
         }
     ]
 }

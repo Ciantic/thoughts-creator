@@ -1,11 +1,6 @@
-/**
- * Last edited
- *
- * @param file File
- */
-export async function gitLastEdit(file: string) {
+async function gitDate(file: string, flag: string = "") {
     const p = Deno.run({
-        cmd: ["git", "log", "-1", "--pretty=format:%ci", file],
+        cmd: ["git", "log", "-1", flag, "--pretty=format:%ci", file].filter((v) => v),
         stdout: "piped",
         stderr: "piped",
     });
@@ -27,4 +22,22 @@ export async function gitLastEdit(file: string) {
     } else {
         throw new Error(`git call error: ${outputStrErr}`);
     }
+}
+
+/**
+ * Creation date
+ *
+ * @param file File
+ */
+export async function gitCreated(file: string) {
+    return await gitDate(file, "--reverse");
+}
+
+/**
+ * Last edited
+ *
+ * @param file File
+ */
+export async function gitLastEdit(file: string) {
+    return await gitDate(file);
 }
