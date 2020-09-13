@@ -7,7 +7,7 @@
             "label": "test",
             "type": "shell",
             "command": "deno",
-            "args": ["test", "-A"]
+            "args": ["test", "-A", "--unstable"]
         },
         {
             "label": "build",

@@ -1,6 +1,6 @@
 import { parse } from "https://deno.land/std/flags/mod.ts";
-import { buildAll, createDatabase } from "./build.ts";
-import { getMarkdownFiles } from "./markdown.ts";
+import { generate, createDatabase } from "./build.ts";
+import { getRecursivelyFilesWithExt } from "./fs.ts";
 
 function usage() {
     console.log("Build markdown blog");
@@ -17,20 +17,25 @@ if (args._.length != 1 || args.help) {
 
 // Directory of markdown files
 let dir = args._[0] as string;
-let articleFiles: string[] = [];
 
-try {
-    articleFiles = await getMarkdownFiles(dir);
-} catch (e) {
-    if (e instanceof Error) {
-        if (e.name === "NotFound") {
-            console.error("Directory does not exist: ", dir);
-        }
+// Article files
+const articleFiles = await getRecursivelyFilesWithExt(dir, "md");
+const db = await createDatabase(".cache.db");
+const { failed_files } = await generate(db, articleFiles, ".out");
+
+// Report results
+if (failed_files.length > 0) {
+    console.error("Following files failed to build:");
+    for (const file_error of failed_files) {
+        console.error(`File: ${file_error.file}`);
+        console.error(`Reason:`, file_error.reason);
+        console.error("");
     }
     Deno.exit(1);
+} else {
+    console.log("All files built.");
+    Deno.exit(0);
 }
 
-const db = await createDatabase(articleFiles);
-
-let completed = await buildAll(articleFiles);
-Deno.exit(!completed ? 1 : 0);
+// let completed = await generate(db, ".out");
+// Deno.exit(!completed ? 1 : 0);

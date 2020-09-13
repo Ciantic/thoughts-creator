@@ -3,52 +3,63 @@ import {
     assertEquals,
     assertThrowsAsync,
 } from "https://deno.land/std@0.63.0/testing/asserts.ts";
-import { DbContext } from "./db.ts";
+import { DbContext } from "./mod.ts";
+import type { ArticleRow } from "./articles.ts";
+import { ArticleRepository } from "./articles.ts";
+import { DB } from "https://deno.land/x/sqlite@v2.3.0/src/db.ts";
 
-Deno.test("db creation works", () => {
-    const db = new DbContext(":memory:");
-    assertEquals(db.createSchema(), { result: true });
+Deno.test("articles createSchema", () => {
+    const db = new DB(":memory:");
+    const articles = new ArticleRepository(db);
+    articles.createSchema();
+    db.close(true);
 });
 
-Deno.test("db addArticle works", () => {
-    const db = new DbContext(":memory:");
-    db.createSchema();
+Deno.test("articles add", () => {
+    const db = new DB(":memory:");
+    const articles = new ArticleRepository(db);
+    articles.createSchema();
     assertEquals(
-        db.addArticle({
+        articles.add({
             created: new Date(),
             file: "examples/post01.md",
             hash: "abcdefg",
             modified: new Date(),
             modified_on_disk: new Date(),
+            server_path: "post01.html",
         }),
         {
             result: 1,
         }
     );
+    db.close(true);
 });
 
-Deno.test("db getArticlesFrom works", () => {
-    const db = new DbContext(":memory:");
-    db.createSchema();
+Deno.test("articles getFrom", () => {
+    const db = new DB(":memory:");
+    const articles = new ArticleRepository(db);
+    articles.createSchema();
     // Older post, omitted by filter
-    db.addArticle({
+    articles.add({
         created: new Date("2010-01-01"),
         file: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
+        server_path: "post01.html",
     });
 
     // Newer post, included by the filter (expected result)
-    db.addArticle({
+    articles.add({
         created: new Date("2020-01-01"),
         file: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
+        server_path: "post02.html",
     });
 
-    const res = db.getArticlesFrom(new Date("2020-01-01"));
+    const res = articles.getFrom(new Date("2020-01-01"));
     if (!res.result) {
         throw new Error("Fail");
     }
@@ -59,63 +70,73 @@ Deno.test("db getArticlesFrom works", () => {
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
-    });
+        server_path: "post02.html",
+    } as ArticleRow);
+    db.close(true);
 });
 
-Deno.test("db getArticleMaxModifiedOnDisk works", () => {
-    const db = new DbContext(":memory:");
-    db.createSchema();
+Deno.test("articles getMaxModifiedOnDisk", () => {
+    const db = new DB(":memory:");
+    const articles = new ArticleRepository(db);
+    articles.createSchema();
 
     // Older post
-    db.addArticle({
+    articles.add({
         created: new Date("2010-01-01"),
         file: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
+        server_path: "post01.html",
     });
 
     // Newer post
-    db.addArticle({
+    articles.add({
         created: new Date("2020-01-01"),
         file: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
+        server_path: "post02.html",
     });
 
-    const res = db.getArticleMaxModifiedOnDisk();
+    const res = articles.getMaxModifiedOnDisk();
     if (!res.result) {
         throw new Error("Fail");
     }
     assertEquals(res.result, new Date("2020-01-03"));
+    db.close(true);
 });
 
-Deno.test("db cleanOldArticles works", () => {
-    const db = new DbContext(":memory:");
-    db.createSchema();
+Deno.test("articles cleanNonExisting", () => {
+    const db = new DB(":memory:");
+    const articles = new ArticleRepository(db);
+    articles.createSchema();
 
     // Older post
-    db.addArticle({
+    articles.add({
         created: new Date("2010-01-01"),
         file: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
+        server_path: "post01.html",
     });
 
     // Newer post
-    db.addArticle({
+    articles.add({
         created: new Date("2020-01-01"),
         file: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
+        server_path: "post02.html",
     });
 
-    const res = db.cleanOldArticles(["examples/post02.md"]);
+    const res = articles.cleanNonExisting(["examples/post02.md"]);
     if (!res.result) {
         throw new Error(res.error);
     }
-    assertEquals(1, db.getArticlesFrom(new Date("2000-01-01")).result?.length);
+    assertEquals(1, articles.getFrom(new Date("2000-01-01")).result?.length);
+    db.close(true);
 });
