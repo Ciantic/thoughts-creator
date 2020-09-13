@@ -35,13 +35,13 @@ export async function generate(db: DbContext, articleFiles: string[], outputDir:
     let promisePool = new PromisePool(16);
 
     let articleWorkers = articleFiles.map((articleFile) =>
-        promisePool.open(() => {
-            return buildArticleWorker({
+        promisePool.open(() =>
+            buildArticleWorker({
                 articleFile,
                 outputDir,
                 databaseFile: db.getDatabaseFile(),
-            });
-        })
+            })
+        )
     );
     const articleCompletions = await Promise.allSettled(articleWorkers);
     const failed_files: { file: string; reason: any }[] = [];
@@ -60,7 +60,7 @@ export async function generate(db: DbContext, articleFiles: string[], outputDir:
     }
 
     return {
-        failed_files
+        failed_files,
     };
 }
 
@@ -105,6 +105,7 @@ async function buildArticle(opts: {
             server_path: `${created.getFullYear()}/${(created.getMonth() + 1)
                 .toString()
                 .padStart(2, "0")}/${basename(articleFile, ".md")}/`,
+            html: markdown_result.body,
         });
     }
 

@@ -1,6 +1,7 @@
 import {
     assert,
     assertEquals,
+    assertStringContains,
     assertThrowsAsync,
 } from "https://deno.land/std@0.63.0/testing/asserts.ts";
 import { createDatabase, generate } from "./build.ts";
@@ -23,6 +24,13 @@ Deno.test("build db works", async () => {
     // Articles can be in any order, because they are created in parallel, sort
     // the results and remove IDs.
     articles.result?.sort((a, b) => (a.file > b.file ? 1 : -1)).forEach((f) => (f.id = 0));
+    if (!articles.result) {
+        throw new Error(articles.error);
+    }
+
+    assertStringContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
+
+    assertStringContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
 
     assertEquals(articles.result, [
         {
@@ -38,6 +46,7 @@ Deno.test("build db works", async () => {
             file: await Deno.realPath("./examples/post01.md"),
             hash: "",
             server_path: "2020/09/post01/",
+            html: articles.result[0].html,
         },
         {
             id: 0,
@@ -52,6 +61,7 @@ Deno.test("build db works", async () => {
             file: await Deno.realPath("./examples/post02.md"),
             hash: "",
             server_path: "2020/09/post02/",
+            html: articles.result[1].html,
         },
     ] as ArticleRow[]);
     db.close();

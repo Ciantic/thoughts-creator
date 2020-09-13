@@ -10,6 +10,7 @@ export interface ArticleRow {
     modified_on_disk: Date;
     file: string;
     server_path: string;
+    html: string;
 }
 
 type ArticleInsertRow = Omit<ArticleRow, "id">;
@@ -20,7 +21,7 @@ type ArticleInsertRow = Omit<ArticleRow, "id">;
  * @param rows
  */
 function* mapStarArticle(rows: Rows): Generator<ArticleRow> {
-    for (const [id, hash, created, modified, modified_on_disk, file, server_path] of rows) {
+    for (const [id, hash, created, modified, modified_on_disk, file, server_path, html] of rows) {
         yield {
             id: +id,
             hash: hash,
@@ -29,6 +30,7 @@ function* mapStarArticle(rows: Rows): Generator<ArticleRow> {
             modified_on_disk: new Date(modified_on_disk),
             file: file,
             server_path: server_path,
+            html: html,
         };
     }
 }
@@ -46,7 +48,8 @@ export class ArticleRepository {
                 modified         DATETIME       NOT NULL,
                 modified_on_disk DATETIME       NOT NULL,
                 file             VARCHAR (2048) NOT NULL UNIQUE,
-                server_path        VARCHAR (2048) NOT NULL UNIQUE
+                server_path        VARCHAR (2048) NOT NULL UNIQUE,
+                html        VARCHAR (10048) NOT NULL DEFAULT ""
             );
             `
         );
@@ -56,17 +59,18 @@ export class ArticleRepository {
         return dbError(() => {
             this.db.query(
                 `INSERT INTO article 
-                    (hash, created, modified, modified_on_disk, file, server_path) 
-                    VALUES(?, ?, ?, ?, ?, ?) 
+                    (hash, created, modified, modified_on_disk, file, server_path, html) 
+                    VALUES(?, ?, ?, ?, ?, ?, ?) 
                 ON CONFLICT(file) DO 
                 UPDATE SET 
                     hash = excluded.hash,
                     created = excluded.created,
                     modified = excluded.modified,
                     modified_on_disk = excluded.modified_on_disk,
-                    server_path = excluded.server_path
+                    server_path = excluded.server_path,
+                    html = excluded.html
                 `,
-                [p.hash, p.created, p.modified, p.modified_on_disk, p.file, p.server_path]
+                [p.hash, p.created, p.modified, p.modified_on_disk, p.file, p.server_path, p.html]
             );
 
             return +this.db.lastInsertRowId;

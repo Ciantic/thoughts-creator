@@ -27,6 +27,7 @@ Deno.test("articles add", () => {
             modified: new Date(),
             modified_on_disk: new Date(),
             server_path: "post01.html",
+            html: "",
         }),
         {
             result: 1,
@@ -47,6 +48,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
         server_path: "post01.html",
+        html: "first",
     });
 
     // Newer post, included by the filter (expected result)
@@ -57,6 +59,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
         server_path: "post02.html",
+        html: "second",
     });
 
     const res = articles.getFrom(new Date("2020-01-01"));
@@ -71,6 +74,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
         server_path: "post02.html",
+        html: "second",
     } as ArticleRow);
     db.close(true);
 });
@@ -88,6 +92,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
         server_path: "post01.html",
+        html: "",
     });
 
     // Newer post
@@ -98,6 +103,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
         server_path: "post02.html",
+        html: "",
     });
 
     const res = articles.getMaxModifiedOnDisk();
@@ -121,6 +127,7 @@ Deno.test("articles cleanNonExisting", () => {
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
         server_path: "post01.html",
+        html: "",
     });
 
     // Newer post
@@ -131,6 +138,7 @@ Deno.test("articles cleanNonExisting", () => {
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
         server_path: "post02.html",
+        html: "",
     });
 
     const res = articles.cleanNonExisting(["examples/post02.md"]);
