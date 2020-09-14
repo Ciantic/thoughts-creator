@@ -10,3 +10,5 @@ export function dbError<T>(f: () => T) {
         };
     }
 }
+
+export const nameof = <T>() => (name: keyof T) => name;

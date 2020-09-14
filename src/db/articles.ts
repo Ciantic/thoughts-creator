@@ -1,6 +1,6 @@
 import { DB } from "https://deno.land/x/sqlite/mod.ts";
 import { Rows } from "https://deno.land/x/sqlite@v2.3.0/src/rows.ts";
-import { dbError } from "./helpers.ts";
+import { dbError, nameof } from "./helpers.ts";
 
 export interface ArticleRow {
     id: number;
@@ -14,6 +14,8 @@ export interface ArticleRow {
 }
 
 type ArticleInsertRow = Omit<ArticleRow, "id">;
+
+const f = nameof<ArticleRow>();
 
 /**
  * `SELECT * FROM article` result mapper
@@ -42,14 +44,14 @@ export class ArticleRepository {
         this.db.query(
             `
             CREATE TABLE IF NOT EXISTS article (
-                id               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-                hash             VARCHAR (64)   NOT NULL,
-                created          DATETIME       NOT NULL,
-                modified         DATETIME       NOT NULL,
-                modified_on_disk DATETIME       NOT NULL,
-                file             VARCHAR (2048) NOT NULL UNIQUE,
-                server_path        VARCHAR (2048) NOT NULL UNIQUE,
-                html        VARCHAR (10048) NOT NULL DEFAULT ""
+                ${f("id")}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
+                ${f("hash")}             VARCHAR (64)   NOT NULL,
+                ${f("created")}          DATETIME       NOT NULL,
+                ${f("modified")}         DATETIME       NOT NULL,
+                ${f("modified_on_disk")} DATETIME       NOT NULL,
+                ${f("file")}             VARCHAR (2048) NOT NULL UNIQUE,
+                ${f("server_path")}      VARCHAR (2048) NOT NULL UNIQUE,
+                ${f("html")}             VARCHAR (10048) NOT NULL DEFAULT ""
             );
             `
         );
@@ -59,16 +61,24 @@ export class ArticleRepository {
         return dbError(() => {
             this.db.query(
                 `INSERT INTO article 
-                    (hash, created, modified, modified_on_disk, file, server_path, html) 
+                    (
+                        ${f("hash")}, 
+                        ${f("created")}, 
+                        ${f("modified")}, 
+                        ${f("modified_on_disk")}, 
+                        ${f("file")}, 
+                        ${f("server_path")}, 
+                        ${f("html")}
+                    ) 
                     VALUES(?, ?, ?, ?, ?, ?, ?) 
-                ON CONFLICT(file) DO 
+                ON CONFLICT(${f("file")}) DO 
                 UPDATE SET 
-                    hash = excluded.hash,
-                    created = excluded.created,
-                    modified = excluded.modified,
-                    modified_on_disk = excluded.modified_on_disk,
-                    server_path = excluded.server_path,
-                    html = excluded.html
+                    ${f("hash")} = excluded.${f("hash")},
+                    ${f("created")} = excluded.${f("created")},
+                    ${f("modified")} = excluded.${f("modified")},
+                    ${f("modified_on_disk")} = excluded.${f("modified_on_disk")},
+                    ${f("server_path")} = excluded.${f("server_path")},
+                    ${f("html")} = excluded.${f("html")}
                 `,
                 [p.hash, p.created, p.modified, p.modified_on_disk, p.file, p.server_path, p.html]
             );
@@ -90,7 +100,7 @@ export class ArticleRepository {
     getFrom(modified_on_disk_start: Date) {
         return dbError(() => {
             const q = this.db.query(
-                "SELECT * FROM article WHERE modified_on_disk > :modified_on_disk_start",
+                `SELECT * FROM article WHERE ${f("modified_on_disk")} > :modified_on_disk_start`,
                 {
                     modified_on_disk_start,
                 }
@@ -101,7 +111,9 @@ export class ArticleRepository {
 
     getMaxModifiedOnDisk() {
         return dbError(() => {
-            const [maxdate] = [...this.db.query("SELECT MAX(modified_on_disk) FROM article")];
+            const [maxdate] = [
+                ...this.db.query(`SELECT MAX(${f("modified_on_disk")}) FROM article`),
+            ];
             if (!maxdate) {
                 throw new Error("No articles");
             }

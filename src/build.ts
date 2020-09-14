@@ -36,6 +36,9 @@ export async function generate(db: DbContext, articleFiles: string[], outputDir:
 
     let articleWorkers = articleFiles.map((articleFile) =>
         promisePool.open(() =>
+            // buildArticleWorker
+            // or
+            // buildArticle
             buildArticleWorker({
                 articleFile,
                 outputDir,
@@ -75,27 +78,21 @@ async function buildArticle(opts: {
 }) {
     let { articleFile, databaseFile, outputDir } = opts;
     let db = new DbContext(databaseFile);
-    let file_info = await Deno.lstat(articleFile);
+    let stat = await Deno.lstat(articleFile);
     let realpath = await Deno.realPath(articleFile);
-    let contents = await Deno.readFile(articleFile);
-    let contents_str = new TextDecoder().decode(contents) || "";
-    let markdown_result = markdown(contents_str);
 
     const maxDate = db.articles.getMaxModifiedOnDisk().result;
-    if (!file_info.mtime) {
-        throw new Error("Modification date is missing");
-    }
-
-    // buildArticleWorker()
-    let stat = await Deno.lstat(articleFile);
     if (!stat.mtime) {
-        throw new Error("Mtime not fetched for " + articleFile);
+        throw new Error("Modification date is missing");
     }
 
     // If the file is newer than in the database, add or update it
     if (!maxDate || stat.mtime > maxDate) {
         const created = await gitCreated(articleFile);
         const modified = await gitLastEdit(articleFile);
+        const contents = await Deno.readFile(articleFile);
+        const contents_str = new TextDecoder().decode(contents);
+        const markdown_result = markdown(contents_str);
         db.articles.add({
             created: created,
             file: realpath,
@@ -108,6 +105,8 @@ async function buildArticle(opts: {
             html: markdown_result.body,
         });
     }
+
+    db.close();
 
     return {
         build: "cache",
@@ -125,17 +124,3 @@ async function buildArticle(opts: {
 }
 
 const buildArticleWorker = workerOnce(import.meta, buildArticle);
-
-/**
- * Chunks an array in place (modifies the array)
- *
- * @param arr
- * @param size
-function chunkInplace<T>(arr: T[], size: number) {
-    let result = [];
-    while (arr.length) {
-        result.push(arr.splice(0, size));
-    }
-    return result;
-}
- */
