@@ -6,6 +6,7 @@ import { getMaxModifiedOnDirectory, getRecursivelyFilesWithExt } from "./fs.ts";
 import { workerOnce } from "./worker.ts";
 import PromisePool from "https://unpkg.com/native-promise-pool@^3.15.0/edition-deno/index.ts";
 import { basename, dirname, join, posix } from "https://deno.land/std@0.68.0/path/mod.ts";
+import { ArticleRow } from "./db/articles.ts";
 
 /**
  * Create database
@@ -18,12 +19,21 @@ export async function createDatabase(databaseFile: string) {
     return db;
 }
 
+type GenerateOptions = {
+    db: DbContext;
+    articleFiles: string[];
+    outputDir: string;
+    layoutArticle?: (db: DbContext, row: ArticleRow) => string;
+    // layoutPage?: (row)
+};
+
 /**
  * Generate HTML
  *
  * @param files Markdown files as list
  */
-export async function generate(db: DbContext, articleFiles: string[], outputDir: string) {
+export async function generate(opts: GenerateOptions) {
+    const { outputDir, db, articleFiles } = opts;
     const outputModified = await getMaxModifiedOnDirectory(outputDir);
     const outputHtmlFiles = await getRecursivelyFilesWithExt(outputDir, "html");
     const articles = db.articles.getFrom(outputModified);
@@ -77,31 +87,41 @@ export async function generate(db: DbContext, articleFiles: string[], outputDir:
  * @param outPath
  */
 async function writeFiles(db: DbContext, outPath: string) {
-    const articles = db.articles.getAll();
     const encoder = new TextEncoder();
+    const promisePool = new PromisePool(16);
+    let workers: Promise<void>[] = [];
 
-    if (articles.result) {
-        for (const f of articles.result) {
-            const dir = join(outPath, f.server_path);
-            const path = join(dir, "index.html");
-            await Deno.mkdir(dir, {
-                recursive: true,
-            });
-            await Deno.writeFile(path, encoder.encode(f.html));
-        }
-    }
+    const articles = db.articles.getAll();
+    if (articles.result)
+        workers = workers.concat(
+            articles.result.map((row) =>
+                promisePool.open(async () => {
+                    const dir = join(outPath, row.server_path);
+                    const path = join(dir, "index.html");
+                    await Deno.mkdir(dir, {
+                        recursive: true,
+                    });
+                    await Deno.writeFile(path, encoder.encode(row.html));
+                })
+            )
+        );
 
     const resources = db.resources.getAll();
-    if (resources.result) {
-        for (const f of resources.result) {
-            const dst = join(outPath, f.server_path);
-            const dir = dirname(dst);
-            await Deno.mkdir(dir, {
-                recursive: true,
-            });
-            await Deno.copyFile(f.local_path, dst);
-        }
-    }
+    if (resources.result)
+        workers = workers.concat(
+            resources.result.map((row) =>
+                promisePool.open(async () => {
+                    const dst = join(outPath, row.server_path);
+                    const dir = dirname(dst);
+                    await Deno.mkdir(dir, {
+                        recursive: true,
+                    });
+                    await Deno.copyFile(row.local_path, dst);
+                })
+            )
+        );
+
+    await Promise.allSettled(workers);
 }
 
 /**

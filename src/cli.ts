@@ -21,7 +21,11 @@ let dir = args._[0] as string;
 // Article files
 const articleFiles = await getRecursivelyFilesWithExt(dir, "md");
 const db = await createDatabase(".cache.db");
-const { failed_files } = await generate(db, articleFiles, ".out");
+const { failed_files } = await generate({
+    db,
+    articleFiles,
+    outputDir: ".out",
+});
 
 // Report results
 if (failed_files.length > 0) {

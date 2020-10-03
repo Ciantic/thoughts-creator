@@ -18,7 +18,11 @@ Deno.test("build db works", async () => {
 
     const db = await createDatabase(".cache.test.db");
 
-    const gen = await generate(db, ["./examples/post01.md", "./examples/post02.md"], ".out.test");
+    const gen = await generate({
+        db: db,
+        articleFiles: ["./examples/post01.md", "./examples/post02.md"],
+        outputDir: ".out.test",
+    });
     const articles = db.articles.getFrom(new Date("2020-01-01"));
     const resources = db.resources.getFrom(new Date("2020-01-01"));
 
