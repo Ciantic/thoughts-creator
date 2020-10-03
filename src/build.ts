@@ -63,14 +63,20 @@ export async function generate(db: DbContext, articleFiles: string[], outputDir:
         }
     }
 
-    await copyFiles(db, outputDir);
+    await writeFiles(db, outputDir);
 
     return {
         failed_files,
     };
 }
 
-async function copyFiles(db: DbContext, outPath: string) {
+/**
+ * Writes files
+ *
+ * @param db
+ * @param outPath
+ */
+async function writeFiles(db: DbContext, outPath: string) {
     const articles = db.articles.getAll();
     const encoder = new TextEncoder();
 

@@ -42,7 +42,7 @@ Deno.test("build db works", async () => {
             id: 1,
             local_path: await Deno.realPath("./examples/res01.svg"),
             modified_on_disk: (await Deno.stat("./examples/res01.svg")).mtime,
-            server_path: "2020/09/post02/res01.svg",
+            server_path: "2020/10/post02/res01.svg",
         },
     ]);
 
@@ -66,15 +66,15 @@ Deno.test("build db works", async () => {
             id: 0,
 
             // Git created
-            created: new Date("2020-09-12T17:03:56.000Z"),
+            created: new Date("2020-10-03T16:31:11.000Z"),
 
             // Git modified
-            modified: new Date("2020-09-12T17:03:56.000Z"),
+            modified: new Date("2020-10-03T16:31:11.000Z"),
 
             modified_on_disk: (await Deno.stat("./examples/post02.md")).mtime,
             local_path: await Deno.realPath("./examples/post02.md"),
             hash: "",
-            server_path: "2020/09/post02/",
+            server_path: "2020/10/post02/",
             html: articles.result[1].html,
         },
     ] as ArticleRow[]);
