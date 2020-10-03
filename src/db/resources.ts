@@ -1,24 +1,25 @@
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
-import { Rows } from "https://deno.land/x/sqlite@v2.3.0/src/rows.ts";
-import { dbError, nameof } from "./helpers.ts";
+import type { DB } from "https://deno.land/x/sqlite/mod.ts";
+import type { Rows } from "https://deno.land/x/sqlite/src/rows.ts";
+import { dbError, fields, upsert } from "./helpers.ts";
 
 export interface ResourceRow {
     id: number;
     modified_on_disk: Date;
-    file: string;
+    local_path: string;
     server_path: string;
 }
 
 type ResourceInsertRow = Omit<ResourceRow, "id">;
 
-const f = nameof<ResourceRow>();
+const f = fields<ResourceRow>();
+const table = "resource";
 
 function* mapStar(rows: Rows): Generator<ResourceRow> {
     for (const [id, modified_on_disk, file, server_path] of rows) {
         yield {
             id: +id,
             modified_on_disk: new Date(modified_on_disk),
-            file: file,
+            local_path: file,
             server_path: server_path,
         };
     }
@@ -30,46 +31,35 @@ export class ResourceRepository {
     createSchema() {
         this.db.query(
             `
-            CREATE TABLE IF NOT EXISTS resource (
-                ${f("id")}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-                ${f("modified_on_disk")} DATETIME       NOT NULL,
-                ${f("file")}             VARCHAR (2048) NOT NULL UNIQUE,
-                ${f("server_path")}      VARCHAR (2048) NOT NULL UNIQUE
+            CREATE TABLE IF NOT EXISTS ${table} (
+                ${f.id}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
+                ${f.modified_on_disk} DATETIME       NOT NULL,
+                ${f.local_path}       VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.server_path}      VARCHAR (2048) NOT NULL UNIQUE
             );
             `
         );
     }
 
-    add(p: ResourceInsertRow) {
-        return dbError(() => {
-            this.db.query(
-                `INSERT INTO resource 
-                    (
-                        ${f("modified_on_disk")}, 
-                        ${f("file")}, 
-                        ${f("server_path")}
-                    ) 
-                    VALUES(?, ?, ?) 
-                ON CONFLICT(${f("file")}) DO 
-                UPDATE SET 
-                    ${f("modified_on_disk")} = excluded.${f("modified_on_disk")},
-                    ${f("server_path")} = excluded.${f("server_path")}
-                `,
-                [p.modified_on_disk, p.file, p.server_path]
-            );
+    add = upsert<ResourceInsertRow>({
+        table: table,
+        conflict: f.local_path,
+        args: [f.modified_on_disk, f.local_path, f.server_path],
+        db: this.db,
+    });
 
-            return +this.db.lastInsertRowId;
+    getAll() {
+        return dbError(() => {
+            const q = this.db.query(`SELECT * FROM ${table}`);
+            return [...mapStar(q)];
         });
     }
-
     getFrom(modified_on_disk_start: Date) {
         return dbError(() => {
             return [
                 ...mapStar(
                     this.db.query(
-                        `SELECT * FROM resource WHERE ${f(
-                            "modified_on_disk"
-                        )} > :modified_on_disk_start`,
+                        `SELECT * FROM ${table} WHERE ${f.modified_on_disk} > :modified_on_disk_start`,
                         {
                             modified_on_disk_start,
                         }

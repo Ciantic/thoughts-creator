@@ -14,8 +14,9 @@ export function workerOnce<I, O>(importMeta: ImportMeta, fn: (input: I) => Promi
                 worker.postMessage({
                     error: (e as Error).stack,
                 });
+            } finally {
+                worker.close();
             }
-            worker.close();
         };
 
         setTimeout(() => {

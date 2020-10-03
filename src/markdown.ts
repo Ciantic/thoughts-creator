@@ -1,6 +1,6 @@
 import { default as hljs } from "https://cdn.skypack.dev/highlight.js@^10.0.3";
 import { parseAsFrontMatter } from "https://cdn.skypack.dev/parse-yaml@^0.1.0";
-import { Marked, Renderer } from "https://deno.land/x/markdown@v2.0.0/mod.ts";
+import { Marked, Renderer } from "https://deno.land/x/markdown/mod.ts";
 
 // Setup marked with highlight.js
 Marked.setOptions({

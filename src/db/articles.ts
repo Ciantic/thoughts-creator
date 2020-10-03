@@ -1,6 +1,6 @@
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
-import { Rows } from "https://deno.land/x/sqlite@v2.3.0/src/rows.ts";
-import { dbError, nameof } from "./helpers.ts";
+import type { DB } from "https://deno.land/x/sqlite/mod.ts";
+import type { Rows } from "https://deno.land/x/sqlite/src/rows.ts";
+import { dbError, fields, upsert } from "./helpers.ts";
 
 export interface ArticleRow {
     id: number;
@@ -8,14 +8,15 @@ export interface ArticleRow {
     created: Date;
     modified: Date;
     modified_on_disk: Date;
-    file: string;
+    local_path: string;
     server_path: string;
     html: string;
 }
 
 type ArticleInsertRow = Omit<ArticleRow, "id">;
 
-const f = nameof<ArticleRow>();
+const f = fields<ArticleRow>();
+const table = "article";
 
 /**
  * `SELECT * FROM article` result mapper
@@ -30,7 +31,7 @@ function* mapStarArticle(rows: Rows): Generator<ArticleRow> {
             created: new Date(created),
             modified: new Date(modified),
             modified_on_disk: new Date(modified_on_disk),
-            file: file,
+            local_path: file,
             server_path: server_path,
             html: html,
         };
@@ -43,64 +44,56 @@ export class ArticleRepository {
     createSchema() {
         this.db.query(
             `
-            CREATE TABLE IF NOT EXISTS article (
-                ${f("id")}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-                ${f("hash")}             VARCHAR (64)   NOT NULL,
-                ${f("created")}          DATETIME       NOT NULL,
-                ${f("modified")}         DATETIME       NOT NULL,
-                ${f("modified_on_disk")} DATETIME       NOT NULL,
-                ${f("file")}             VARCHAR (2048) NOT NULL UNIQUE,
-                ${f("server_path")}      VARCHAR (2048) NOT NULL UNIQUE,
-                ${f("html")}             VARCHAR (10048) NOT NULL DEFAULT ""
+            CREATE TABLE IF NOT EXISTS ${table} (
+                ${f.id}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
+                ${f.hash}             VARCHAR (64)   NOT NULL,
+                ${f.created}          DATETIME       NOT NULL,
+                ${f.modified}         DATETIME       NOT NULL,
+                ${f.modified_on_disk} DATETIME       NOT NULL,
+                ${f.local_path}       VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.server_path}      VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.html}             VARCHAR (10048) NOT NULL DEFAULT ""
             );
             `
         );
     }
 
-    add(p: ArticleInsertRow) {
-        return dbError(() => {
-            this.db.query(
-                `INSERT INTO article 
-                    (
-                        ${f("hash")}, 
-                        ${f("created")}, 
-                        ${f("modified")}, 
-                        ${f("modified_on_disk")}, 
-                        ${f("file")}, 
-                        ${f("server_path")}, 
-                        ${f("html")}
-                    ) 
-                    VALUES(?, ?, ?, ?, ?, ?, ?) 
-                ON CONFLICT(${f("file")}) DO 
-                UPDATE SET 
-                    ${f("hash")} = excluded.${f("hash")},
-                    ${f("created")} = excluded.${f("created")},
-                    ${f("modified")} = excluded.${f("modified")},
-                    ${f("modified_on_disk")} = excluded.${f("modified_on_disk")},
-                    ${f("server_path")} = excluded.${f("server_path")},
-                    ${f("html")} = excluded.${f("html")}
-                `,
-                [p.hash, p.created, p.modified, p.modified_on_disk, p.file, p.server_path, p.html]
-            );
-
-            return +this.db.lastInsertRowId;
-        });
-    }
+    add = upsert<ArticleInsertRow>({
+        db: this.db,
+        conflict: f.local_path,
+        table: table,
+        args: [
+            f.hash,
+            f.created,
+            f.modified,
+            f.modified_on_disk,
+            f.local_path,
+            f.server_path,
+            f.html,
+        ],
+    });
 
     cleanNonExisting(existingArticleFiles: string[]) {
         const questionmarks = existingArticleFiles.map(() => "?").join(",");
         return dbError(() => {
             return this.db.query(
-                `DELETE FROM article WHERE file NOT IN (${questionmarks})`,
+                `DELETE FROM ${table} WHERE ${f.local_path} NOT IN (${questionmarks})`,
                 existingArticleFiles
             );
+        });
+    }
+
+    getAll() {
+        return dbError(() => {
+            const q = this.db.query(`SELECT * FROM ${table}`);
+            return [...mapStarArticle(q)];
         });
     }
 
     getFrom(modified_on_disk_start: Date) {
         return dbError(() => {
             const q = this.db.query(
-                `SELECT * FROM article WHERE ${f("modified_on_disk")} > :modified_on_disk_start`,
+                `SELECT * FROM ${table} WHERE ${f.modified_on_disk} > :modified_on_disk_start`,
                 {
                     modified_on_disk_start,
                 }
@@ -111,9 +104,7 @@ export class ArticleRepository {
 
     getMaxModifiedOnDisk() {
         return dbError(() => {
-            const [maxdate] = [
-                ...this.db.query(`SELECT MAX(${f("modified_on_disk")}) FROM article`),
-            ];
+            const [maxdate] = [...this.db.query(`SELECT MAX(${f.modified_on_disk}) FROM ${table}`)];
             if (!maxdate) {
                 throw new Error("No articles");
             }

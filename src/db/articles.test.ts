@@ -22,7 +22,7 @@ Deno.test("articles add", () => {
     assertEquals(
         articles.add({
             created: new Date(),
-            file: "examples/post01.md",
+            local_path: "examples/post01.md",
             hash: "abcdefg",
             modified: new Date(),
             modified_on_disk: new Date(),
@@ -36,6 +36,8 @@ Deno.test("articles add", () => {
     db.close(true);
 });
 
+// TODO: articles.getAll
+
 Deno.test("articles getFrom", () => {
     const db = new DB(":memory:");
     const articles = new ArticleRepository(db);
@@ -43,7 +45,7 @@ Deno.test("articles getFrom", () => {
     // Older post, omitted by filter
     articles.add({
         created: new Date("2010-01-01"),
-        file: "examples/post01.md",
+        local_path: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
@@ -54,7 +56,7 @@ Deno.test("articles getFrom", () => {
     // Newer post, included by the filter (expected result)
     articles.add({
         created: new Date("2020-01-01"),
-        file: "examples/post02.md",
+        local_path: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
@@ -69,7 +71,7 @@ Deno.test("articles getFrom", () => {
     assertEquals(res.result[0], {
         id: 2,
         created: new Date("2020-01-01"),
-        file: "examples/post02.md",
+        local_path: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
@@ -87,7 +89,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
     // Older post
     articles.add({
         created: new Date("2010-01-01"),
-        file: "examples/post01.md",
+        local_path: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
@@ -98,7 +100,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
     // Newer post
     articles.add({
         created: new Date("2020-01-01"),
-        file: "examples/post02.md",
+        local_path: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),
@@ -122,7 +124,7 @@ Deno.test("articles cleanNonExisting", () => {
     // Older post
     articles.add({
         created: new Date("2010-01-01"),
-        file: "examples/post01.md",
+        local_path: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
         modified_on_disk: new Date("2019-01-03"),
@@ -133,7 +135,7 @@ Deno.test("articles cleanNonExisting", () => {
     // Newer post
     articles.add({
         created: new Date("2020-01-01"),
-        file: "examples/post02.md",
+        local_path: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
         modified_on_disk: new Date("2020-01-03"),

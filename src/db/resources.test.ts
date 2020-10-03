@@ -1,5 +1,5 @@
 import { assertEquals } from "https://deno.land/std@0.63.0/testing/asserts.ts";
-import { ResourceRepository } from "./resources.ts";
+import { ResourceRepository, ResourceRow } from "./resources.ts";
 import { DB } from "https://deno.land/x/sqlite@v2.3.0/src/db.ts";
 
 Deno.test("resources createSchema", () => {
@@ -15,7 +15,7 @@ Deno.test("resources add", () => {
     articles.createSchema();
     assertEquals(
         articles.add({
-            file: "examples/res01.svg",
+            local_path: "examples/res01.svg",
             modified_on_disk: new Date(),
             server_path: "res01.svg",
         }),
@@ -32,14 +32,14 @@ Deno.test("resources getFrom", () => {
     resources.createSchema();
     // Older post, omitted by filter
     resources.add({
-        file: "examples/post01.md",
+        local_path: "examples/post01.md",
         modified_on_disk: new Date("2019-01-03"),
         server_path: "post01.html",
     });
 
     // Newer post, included by the filter (expected result)
     resources.add({
-        file: "examples/post02.md",
+        local_path: "examples/post02.md",
         modified_on_disk: new Date("2020-01-03"),
         server_path: "post02.html",
     });
@@ -49,11 +49,11 @@ Deno.test("resources getFrom", () => {
         result: [
             {
                 id: 2,
-                file: "examples/post02.md",
+                local_path: "examples/post02.md",
                 modified_on_disk: new Date("2020-01-03"),
                 server_path: "post02.html",
             },
-        ],
+        ] as ResourceRow[],
     });
     db.close(true);
 });
