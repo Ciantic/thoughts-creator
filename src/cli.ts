@@ -1,6 +1,6 @@
 import { parse } from "https://deno.land/std/flags/mod.ts";
 import { generate, createDatabase } from "./build.ts";
-import { getRecursivelyFilesWithExt } from "./fs.ts";
+import { getRecursivelyFilesWithExt } from "./utils/fs.ts";
 
 function usage() {
     console.log("Build markdown blog");
@@ -19,11 +19,10 @@ if (args._.length != 1 || args.help) {
 let dir = args._[0] as string;
 
 // Article files
-const articleFiles = await getRecursivelyFilesWithExt(dir, "md");
 const db = await createDatabase(".cache.db");
 const { failed_files } = await generate({
     db,
-    articleFiles,
+    articleDir: dir,
     outputDir: ".out",
 });
 

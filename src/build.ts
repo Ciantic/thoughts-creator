@@ -2,11 +2,12 @@ import { markdown } from "./utils/markdown.ts";
 
 import { gitLastEdit, gitCreated } from "./utils/git.ts";
 import { DbContext } from "./db/mod.ts";
-import { getMaxModifiedOnDirectory, getRecursivelyFilesWithExt } from "./utils/fs.ts";
+import { File, getRecursivelyFilesWithExt } from "./utils/fs.ts";
 import { workerOnce } from "./utils/worker.ts";
 import PromisePool from "https://unpkg.com/native-promise-pool@^3.15.0/edition-deno/index.ts";
 import { basename, dirname, join, posix } from "https://deno.land/std/path/mod.ts";
 import { ArticleRow } from "./db/articles.ts";
+import { layout } from "./layout.tsx";
 
 /**
  * Create database
@@ -21,9 +22,9 @@ export async function createDatabase(databaseFile: string) {
 
 type GenerateOptions = {
     db: DbContext;
-    articleFiles: string[];
+    articleDir: string;
     outputDir: string;
-    layoutArticle?: (row: ArticleRow) => string;
+    layoutArticle?: (row: ArticleRow) => Promise<string>;
     // layoutPage?: (row)
 };
 
@@ -33,29 +34,28 @@ type GenerateOptions = {
  * @param files Markdown files as list
  */
 export async function generate(opts: GenerateOptions) {
-    const { outputDir, db, articleFiles } = opts;
-    const outputModified = await getMaxModifiedOnDirectory(outputDir);
-    const outputHtmlFiles = await getRecursivelyFilesWithExt(outputDir, "html");
-    const articles = db.articles.getFrom(outputModified);
+    const { db, outputDir, articleDir, layoutArticle } = opts;
+    const outputPath = await Deno.realPath(outputDir);
+    const articlePath = await Deno.realPath(articleDir);
+    const articleFilenames = await getRecursivelyFilesWithExt(articleDir, "md");
+    const articleFiles = articleFilenames.map((f) => new File(f));
+    const dbMaxDateRes = db.articles.getMaxModifiedOnDisk();
+    const dbMaxDate = dbMaxDateRes.result;
 
-    const dbMaxDate = db.articles.getMaxModifiedOnDisk();
-    if (dbMaxDate.error) {
-        throw new Error("Unable to get max date");
-    }
+    // Clean non-existing articles from the database
+    const articleRealPaths = await Promise.all(articleFiles.map((f) => f.realpath()));
+    db.articles.cleanNonExisting(articleRealPaths);
 
     // Runs 16 simultaneous promises at the time
-    let promisePool = new PromisePool(16);
-    let articleWorkers = articleFiles.map((articleFile) =>
-        promisePool.open(() =>
-            // buildArticleWorker
-            // or
-            // buildArticle
-            buildArticle({
-                articleFile,
-                outputDir,
-                databaseFile: db.getDatabaseFile(),
-            })
-        )
+    const promisePool = new PromisePool(16);
+    const articleWorkers = articleFiles.map((articleFile) =>
+        promisePool.open(async () => {
+            if (!dbMaxDate || (await articleFile.modified()) > dbMaxDate)
+                return buildArticle({
+                    articleFile,
+                    db,
+                });
+        })
     );
     const articleCompletions = await Promise.allSettled(articleWorkers);
     const failed_files: { file: string; reason: any }[] = [];
@@ -67,13 +67,13 @@ export async function generate(opts: GenerateOptions) {
             // Succeeded
         } else if (res.status == "rejected") {
             failed_files.push({
-                file: file,
+                file: file.path,
                 reason: res.reason,
             });
         }
     }
 
-    await writeFiles(db, outputDir);
+    await writeFiles({ db, outputPath, layoutArticle });
 
     return {
         failed_files,
@@ -84,9 +84,17 @@ export async function generate(opts: GenerateOptions) {
  * Writes files
  *
  * @param db
- * @param outPath
+ * @param outputPath
  */
-async function writeFiles(db: DbContext, outPath: string) {
+async function writeFiles({
+    db,
+    outputPath,
+    layoutArticle,
+}: {
+    db: DbContext;
+    outputPath: string;
+    layoutArticle?: (row: ArticleRow) => Promise<string>;
+}) {
     const encoder = new TextEncoder();
     const promisePool = new PromisePool(16);
     let workers: Promise<string[]>[] = [];
@@ -96,13 +104,18 @@ async function writeFiles(db: DbContext, outPath: string) {
         workers = workers.concat(
             articles.result.map((row) =>
                 promisePool.open(async () => {
-                    const dir = join(outPath, row.server_path);
-                    const path = join(dir, "index.html");
-                    await Deno.mkdir(dir, {
+                    const outputFile = await Deno.realPath(
+                        join(outputPath, row.server_path, "index.html")
+                    );
+                    if (!outputFile.startsWith(outputPath)) {
+                        throw new Error(`Incorrect article path ${outputFile}`);
+                    }
+                    await Deno.mkdir(dirname(outputFile), {
                         recursive: true,
                     });
-                    await Deno.writeFile(path, encoder.encode(row.html));
-                    return [path];
+                    const html = layoutArticle ? await layoutArticle(row) : row.html;
+                    await Deno.writeFile(outputFile, encoder.encode(html));
+                    return [outputFile];
                 })
             )
         );
@@ -112,25 +125,25 @@ async function writeFiles(db: DbContext, outPath: string) {
         workers = workers.concat(
             resources.result.map((row) =>
                 promisePool.open(async () => {
-                    const dst = join(outPath, row.server_path);
-                    const dir = dirname(dst);
-                    await Deno.mkdir(dir, {
+                    const outputFile = await Deno.realPath(join(outputPath, row.server_path));
+                    if (!outputFile.startsWith(outputPath)) {
+                        throw new Error(`Incorrect article path ${outputFile}`);
+                    }
+                    await Deno.mkdir(dirname(outputFile), {
                         recursive: true,
                     });
-                    await Deno.copyFile(row.local_path, dst);
-                    return [row.local_path];
+                    await Deno.copyFile(row.local_path, outputFile);
+                    return [outputFile];
                 })
             )
         );
 
-    const writtenFiles = await Promise.allSettled(workers);
+    const writtenFiles = await Promise.all(workers);
     console.log("Written files", writtenFiles);
 }
 
 /**
- *
- * @param db
- * @param html
+ * Build resource
  */
 async function buildResources(
     db: DbContext,
@@ -164,66 +177,31 @@ async function buildResources(
 }
 
 /**
- *
- * @param file
+ * Build article
  */
-async function buildArticle(opts: {
-    databaseFile: string;
-    articleFile: string;
-    outputDir: string;
-}) {
-    let { articleFile, databaseFile, outputDir } = opts;
-    let db = new DbContext(databaseFile);
-    try {
-        let stat = await Deno.lstat(articleFile);
-        let realpath = await Deno.realPath(articleFile);
-
-        const maxDate = db.articles.getMaxModifiedOnDisk().result;
-        if (!stat.mtime) {
-            throw new Error("Modification date is missing");
-        }
-
-        // If the file is newer than in the database, add or update it
-        if (!maxDate || stat.mtime > maxDate) {
-            const created = await gitCreated(articleFile);
-            const modified = await gitLastEdit(articleFile);
-            const contents = await Deno.readFile(articleFile);
-            const contents_str = new TextDecoder().decode(contents);
-            const markdown_result = markdown(contents_str);
-            const year = created.getFullYear();
-            const month = (created.getMonth() + 1).toString().padStart(2, "0");
-            const filename = basename(articleFile, ".md");
-            const serverpath = `${year}/${month}/${filename}/`;
-            db.articles.add({
-                created: created,
-                hash: "",
-                modified: modified,
-                modified_on_disk: stat.mtime,
-                local_path: realpath,
-                server_path: serverpath,
-                html: markdown_result.body,
-            });
-            await buildResources(db, dirname(realpath), serverpath, markdown_result.body);
-        }
-    } catch (e) {
-        throw e;
-    } finally {
-        db.close();
-    }
-
-    return {
-        build: "cache",
-    };
-
-    // return layout({
-    //     created: created,
-    //     lastEdited: edited,
-    //     html: markdown_result.body,
-    //     // link: new URL(""),
-    //     title: "",
-    // });
-
-    // return markdown_result;
+async function buildArticle(opts: { db: DbContext; articleFile: File }) {
+    let { articleFile, db } = opts;
+    let mtime = await articleFile.modified();
+    let realpath = await articleFile.realpath();
+    const created = await gitCreated(articleFile.path);
+    const modified = await gitLastEdit(articleFile.path);
+    const contents = await articleFile.readtext();
+    const markdown_result = markdown(contents);
+    const year = created.getFullYear();
+    const month = (created.getMonth() + 1).toString().padStart(2, "0");
+    const filename = basename(articleFile.path, ".md");
+    const serverpath = `${year}/${month}/${filename}/`;
+    const html = markdown_result.body;
+    db.articles.add({
+        created: created,
+        hash: "",
+        modified: modified,
+        modified_on_disk: mtime,
+        local_path: realpath,
+        server_path: serverpath,
+        html: html,
+    });
+    await buildResources(db, dirname(realpath), serverpath, html);
 }
 
 const buildArticleWorker = workerOnce(import.meta, buildArticle);

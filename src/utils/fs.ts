@@ -7,12 +7,10 @@ export async function getRecursivelyFilesWithExt(dir: string, ext: string) {
     return (await recursiveReaddir(dir)).filter((file) => extname(file) === "." + ext);
 }
 
-export async function getMaxModifiedOnDirectory(dir: string) {
-    return new Date();
-}
-
-class File {
-    private _realPath?: Promise<string>;
+export class File {
+    private _fileInfo?: Deno.FileInfo;
+    private _realPath?: string;
+    private _text?: string;
 
     constructor(private file: string) {}
 
@@ -20,7 +18,26 @@ class File {
         return this.file;
     }
 
-    get realpath() {
-        return Deno.realPath(this.file);
+    async realpath() {
+        this._realPath = await Deno.realPath(this.file);
+        return this._realPath;
+    }
+
+    async stat() {
+        if (!this._fileInfo) {
+            this._fileInfo = await Deno.stat(this.file);
+        }
+        return this._fileInfo;
+    }
+
+    async modified() {
+        return (await this.stat()).mtime ?? new Date();
+    }
+
+    async readtext() {
+        if (typeof this._text === "undefined") {
+            this._text = new TextDecoder().decode(await Deno.readFile(this.path));
+        }
+        return this._text;
     }
 }

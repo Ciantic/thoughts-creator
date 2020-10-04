@@ -20,8 +20,11 @@ Deno.test("build db works", async () => {
 
     const gen = await generate({
         db: db,
-        articleFiles: ["./examples/post01.md", "./examples/post02.md"],
-        outputDir: ".out.test",
+        articleDir: "./examples/",
+        outputDir: "./.out.test/",
+        layoutArticle: async (row) => {
+            return `<body>${row.html}</body>`;
+        },
     });
     const articles = db.articles.getFrom(new Date("2020-01-01"));
     const resources = db.resources.getFrom(new Date("2020-01-01"));
@@ -36,9 +39,16 @@ Deno.test("build db works", async () => {
     }
 
     assertStringContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
+    assertStringContains(
+        await Deno.readTextFile("./.out.test/2020/09/post01/index.html"),
+        `<body><h1 id="example-post">Example post</h1>`
+    );
 
     assertStringContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
-
+    assertStringContains(
+        await Deno.readTextFile("./.out.test/2020/10/post02/index.html"),
+        `<body><h1 id="second-post">Second post</h1>`
+    );
     // assertEquals(gen, {});
 
     assertEquals(resources.result, [
