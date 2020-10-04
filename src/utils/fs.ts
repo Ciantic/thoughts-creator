@@ -10,3 +10,17 @@ export async function getRecursivelyFilesWithExt(dir: string, ext: string) {
 export async function getMaxModifiedOnDirectory(dir: string) {
     return new Date();
 }
+
+class File {
+    private _realPath?: Promise<string>;
+
+    constructor(private file: string) {}
+
+    get path() {
+        return this.file;
+    }
+
+    get realpath() {
+        return Deno.realPath(this.file);
+    }
+}

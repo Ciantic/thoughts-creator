@@ -1,11 +1,11 @@
-import { markdown } from "./markdown.ts";
+import { markdown } from "./utils/markdown.ts";
 
-import { gitLastEdit, gitCreated } from "./git.ts";
+import { gitLastEdit, gitCreated } from "./utils/git.ts";
 import { DbContext } from "./db/mod.ts";
-import { getMaxModifiedOnDirectory, getRecursivelyFilesWithExt } from "./fs.ts";
-import { workerOnce } from "./worker.ts";
+import { getMaxModifiedOnDirectory, getRecursivelyFilesWithExt } from "./utils/fs.ts";
+import { workerOnce } from "./utils/worker.ts";
 import PromisePool from "https://unpkg.com/native-promise-pool@^3.15.0/edition-deno/index.ts";
-import { basename, dirname, join, posix } from "https://deno.land/std@0.68.0/path/mod.ts";
+import { basename, dirname, join, posix } from "https://deno.land/std/path/mod.ts";
 import { ArticleRow } from "./db/articles.ts";
 
 /**
@@ -23,7 +23,7 @@ type GenerateOptions = {
     db: DbContext;
     articleFiles: string[];
     outputDir: string;
-    layoutArticle?: (db: DbContext, row: ArticleRow) => string;
+    layoutArticle?: (row: ArticleRow) => string;
     // layoutPage?: (row)
 };
 
@@ -89,7 +89,7 @@ export async function generate(opts: GenerateOptions) {
 async function writeFiles(db: DbContext, outPath: string) {
     const encoder = new TextEncoder();
     const promisePool = new PromisePool(16);
-    let workers: Promise<void>[] = [];
+    let workers: Promise<string[]>[] = [];
 
     const articles = db.articles.getAll();
     if (articles.result)
@@ -102,6 +102,7 @@ async function writeFiles(db: DbContext, outPath: string) {
                         recursive: true,
                     });
                     await Deno.writeFile(path, encoder.encode(row.html));
+                    return [path];
                 })
             )
         );
@@ -117,11 +118,13 @@ async function writeFiles(db: DbContext, outPath: string) {
                         recursive: true,
                     });
                     await Deno.copyFile(row.local_path, dst);
+                    return [row.local_path];
                 })
             )
         );
 
-    await Promise.allSettled(workers);
+    const writtenFiles = await Promise.allSettled(workers);
+    console.log("Written files", writtenFiles);
 }
 
 /**

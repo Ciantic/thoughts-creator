@@ -5,5 +5,8 @@
     "triggerTaskOnSave.on": true,
     "triggerTaskOnSave.tasks": {
         "test": ["*.ts"]
+    },
+    "deno.import_intellisense_origins": {
+        "https://deno.land": true
     }
 }
