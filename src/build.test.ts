@@ -1,15 +1,20 @@
 import {
     assert,
     assertEquals,
-    assertStringContains,
+    assertStrContains,
     assertThrowsAsync,
-} from "https://deno.land/std@0.63.0/testing/asserts.ts";
+} from "https://deno.land/std/testing/asserts.ts";
 import { createDatabase, generate } from "./build.ts";
+import { join } from "https://deno.land/std/path/mod.ts";
 import type { ArticleRow } from "./db/articles.ts";
+import { ResourceRow } from "./db/resources.ts";
 
 Deno.test("build db works", async () => {
     try {
         await Deno.mkdir(".out.test");
+    } catch (e) {}
+    try {
+        await Deno.writeTextFile(".out.test/foo.html", "");
     } catch (e) {}
 
     try {
@@ -25,6 +30,7 @@ Deno.test("build db works", async () => {
         layoutArticle: async (row) => {
             return `<body>${row.html}</body>`;
         },
+        removeOldOutputFiles: true,
     });
     const articles = db.articles.getFrom(new Date("2020-01-01"));
     const resources = db.resources.getFrom(new Date("2020-01-01"));
@@ -38,14 +44,14 @@ Deno.test("build db works", async () => {
         throw new Error(articles.error);
     }
 
-    assertStringContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
-    assertStringContains(
+    assertStrContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
+    assertStrContains(
         await Deno.readTextFile("./.out.test/2020/09/post01/index.html"),
         `<body><h1 id="example-post">Example post</h1>`
     );
 
-    assertStringContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
-    assertStringContains(
+    assertStrContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
+    assertStrContains(
         await Deno.readTextFile("./.out.test/2020/10/post02/index.html"),
         `<body><h1 id="second-post">Second post</h1>`
     );
@@ -54,11 +60,11 @@ Deno.test("build db works", async () => {
     assertEquals(resources.result, [
         {
             id: 1,
-            local_path: await Deno.realPath("./examples/res01.svg"),
+            local_path: join(await Deno.realPath("./examples/res01.svg"), ""),
             modified_on_disk: (await Deno.stat("./examples/res01.svg")).mtime,
             server_path: "2020/10/post02/res01.svg",
         },
-    ]);
+    ] as ResourceRow[]);
 
     assertEquals(articles.result, [
         {
@@ -71,7 +77,7 @@ Deno.test("build db works", async () => {
             modified: new Date("2020-09-06T22:52:10.000Z"),
 
             modified_on_disk: (await Deno.stat("./examples/post01.md")).mtime,
-            local_path: await Deno.realPath("./examples/post01.md"),
+            local_path: join(await Deno.realPath("./examples/post01.md"), ""),
             hash: "",
             server_path: "2020/09/post01/",
             html: articles.result[0].html,
@@ -86,7 +92,7 @@ Deno.test("build db works", async () => {
             modified: new Date("2020-10-03T16:31:11.000Z"),
 
             modified_on_disk: (await Deno.stat("./examples/post02.md")).mtime,
-            local_path: await Deno.realPath("./examples/post02.md"),
+            local_path: join(await Deno.realPath("./examples/post02.md"), ""),
             hash: "",
             server_path: "2020/10/post02/",
             html: articles.result[1].html,

@@ -19,7 +19,7 @@ export class File {
     }
 
     async realpath() {
-        this._realPath = await Deno.realPath(this.file);
+        this._realPath = join(await Deno.realPath(this.file), "");
         return this._realPath;
     }
 

@@ -3,11 +3,10 @@ import { markdown } from "./utils/markdown.ts";
 import { gitLastEdit, gitCreated } from "./utils/git.ts";
 import { DbContext } from "./db/mod.ts";
 import { File, getRecursivelyFilesWithExt } from "./utils/fs.ts";
-import { workerOnce } from "./utils/worker.ts";
 import PromisePool from "https://unpkg.com/native-promise-pool@^3.15.0/edition-deno/index.ts";
 import { basename, dirname, join, posix } from "https://deno.land/std/path/mod.ts";
 import { ArticleRow } from "./db/articles.ts";
-import { layout } from "./layout.tsx";
+import { recursiveReaddir } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
 
 /**
  * Create database
@@ -25,6 +24,7 @@ type GenerateOptions = {
     articleDir: string;
     outputDir: string;
     layoutArticle?: (row: ArticleRow) => Promise<string>;
+    removeOldOutputFiles: boolean;
     // layoutPage?: (row)
 };
 
@@ -35,9 +35,10 @@ type GenerateOptions = {
  */
 export async function generate(opts: GenerateOptions) {
     const { db, outputDir, articleDir, layoutArticle } = opts;
-    const outputPath = await Deno.realPath(outputDir);
-    const articlePath = await Deno.realPath(articleDir);
-    const articleFilenames = await getRecursivelyFilesWithExt(articleDir, "md");
+    // TODO: remove dummy join https://github.com/denoland/deno/issues/5685
+    const outputPath = join(await Deno.realPath(outputDir), "");
+    const articlePath = join(await Deno.realPath(articleDir), "");
+    const articleFilenames = await getRecursivelyFilesWithExt(articlePath, "md");
     const articleFiles = articleFilenames.map((f) => new File(f));
     const dbMaxDateRes = db.articles.getMaxModifiedOnDisk();
     const dbMaxDate = dbMaxDateRes.result;
@@ -73,7 +74,11 @@ export async function generate(opts: GenerateOptions) {
         }
     }
 
-    await writeFiles({ db, outputPath, layoutArticle });
+    const writtenFiles = await writeFiles({ db, outputPath, layoutArticle });
+
+    if (opts.removeOldOutputFiles) {
+        await removeOldOutputFiles(outputPath, writtenFiles);
+    }
 
     return {
         failed_files,
@@ -97,16 +102,14 @@ async function writeFiles({
 }) {
     const encoder = new TextEncoder();
     const promisePool = new PromisePool(16);
-    let workers: Promise<string[]>[] = [];
+    let workers: Promise<string>[] = [];
 
     const articles = db.articles.getAll();
     if (articles.result)
         workers = workers.concat(
             articles.result.map((row) =>
                 promisePool.open(async () => {
-                    const outputFile = await Deno.realPath(
-                        join(outputPath, row.server_path, "index.html")
-                    );
+                    const outputFile = join(outputPath, row.server_path, "index.html");
                     if (!outputFile.startsWith(outputPath)) {
                         throw new Error(`Incorrect article path ${outputFile}`);
                     }
@@ -115,7 +118,7 @@ async function writeFiles({
                     });
                     const html = layoutArticle ? await layoutArticle(row) : row.html;
                     await Deno.writeFile(outputFile, encoder.encode(html));
-                    return [outputFile];
+                    return outputFile;
                 })
             )
         );
@@ -125,7 +128,7 @@ async function writeFiles({
         workers = workers.concat(
             resources.result.map((row) =>
                 promisePool.open(async () => {
-                    const outputFile = await Deno.realPath(join(outputPath, row.server_path));
+                    const outputFile = join(outputPath, row.server_path);
                     if (!outputFile.startsWith(outputPath)) {
                         throw new Error(`Incorrect article path ${outputFile}`);
                     }
@@ -133,13 +136,22 @@ async function writeFiles({
                         recursive: true,
                     });
                     await Deno.copyFile(row.local_path, outputFile);
-                    return [outputFile];
+                    return outputFile;
                 })
             )
         );
 
-    const writtenFiles = await Promise.all(workers);
-    console.log("Written files", writtenFiles);
+    return await Promise.all(workers);
+}
+
+async function removeOldOutputFiles(outputPath: string, writtenFiles: string[]) {
+    let writtenFilesSet = new Set(writtenFiles);
+    let oldOutputFiles = await recursiveReaddir(outputPath);
+    let remainingOldFiles = oldOutputFiles.filter((x) => !writtenFilesSet.has(x));
+    console.log("Delete", remainingOldFiles, writtenFilesSet);
+    // let removals = remainingOldFiles.map((f) => Deno.remove(f));
+
+    // return await Promise.all(removals);
 }
 
 /**
@@ -162,7 +174,7 @@ async function buildResources(
         } else if (possibleUrl.match(/\.([^\./]+)$/)) {
             // File with extension, treat as a resource file
             let filePath = join(local_path, possibleUrl);
-            let realFilePath = await Deno.realPath(filePath);
+            let realFilePath = join(await Deno.realPath(filePath), "");
             let stat = await Deno.stat(realFilePath);
             let serverPath = posix.join(server_path, possibleUrl);
             db.resources.add({
@@ -203,5 +215,3 @@ async function buildArticle(opts: { db: DbContext; articleFile: File }) {
     });
     await buildResources(db, dirname(realpath), serverpath, html);
 }
-
-const buildArticleWorker = workerOnce(import.meta, buildArticle);
