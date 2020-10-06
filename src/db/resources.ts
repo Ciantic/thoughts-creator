@@ -14,13 +14,16 @@ export type ResourceInsertRow = Omit<ResourceRow, "id">;
 const f = fields<ResourceRow>();
 const table = "resource";
 
+/**
+ * `SELECT * FROM table` result mapper
+ */
 function* mapStar(rows: Rows): Generator<ResourceRow> {
-    for (const [id, modified_on_disk, file, server_path] of rows) {
+    for (const [id, modifiedOnDisk, file, serverPath] of rows) {
         yield {
             id: +id,
-            modifiedOnDisk: new Date(modified_on_disk),
+            modifiedOnDisk: new Date(modifiedOnDisk),
             localPath: file,
-            serverPath: server_path,
+            serverPath: serverPath,
         };
     }
 }
@@ -54,14 +57,14 @@ export class ResourceRepository {
             return [...mapStar(q)];
         });
     }
-    getFrom(modified_on_disk_start: Date) {
+    getFrom(fromModifiedOnDisk: Date) {
         return dbError(() => {
             return [
                 ...mapStar(
                     this.db.query(
-                        `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :modified_on_disk_start`,
+                        `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :fromModifiedOnDisk`,
                         {
-                            modified_on_disk_start,
+                            fromModifiedOnDisk: fromModifiedOnDisk,
                         }
                     )
                 ),

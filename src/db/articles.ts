@@ -19,20 +19,18 @@ const f = fields<ArticleRow>();
 const table = "article";
 
 /**
- * `SELECT * FROM article` result mapper
- *
- * @param rows
+ * `SELECT * FROM table` result mapper
  */
-function* mapStarArticle(rows: Rows): Generator<ArticleRow> {
-    for (const [id, hash, created, modified, modified_on_disk, file, server_path, html] of rows) {
+function* mapStar(rows: Rows): Generator<ArticleRow> {
+    for (const [id, hash, created, modified, modifiedOnDisk, file, serverPath, html] of rows) {
         yield {
             id: +id,
             hash: hash,
             created: new Date(created),
             modified: new Date(modified),
-            modifiedOnDisk: new Date(modified_on_disk),
+            modifiedOnDisk: new Date(modifiedOnDisk),
             localPath: file,
-            serverPath: server_path,
+            serverPath: serverPath,
             html: html,
         };
     }
@@ -78,19 +76,19 @@ export class ArticleRepository {
     getAll() {
         return dbError(() => {
             const q = this.db.query(`SELECT * FROM ${table}`);
-            return [...mapStarArticle(q)];
+            return [...mapStar(q)];
         });
     }
 
-    getFrom(modified_on_disk_start: Date) {
+    getFrom(fromModifiedOnDisk: Date) {
         return dbError(() => {
             const q = this.db.query(
-                `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :modified_on_disk_start`,
+                `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :fromModifiedOnDisk`,
                 {
-                    modified_on_disk_start,
+                    fromModifiedOnDisk,
                 }
             );
-            return [...mapStarArticle(q)];
+            return [...mapStar(q)];
         });
     }
 
