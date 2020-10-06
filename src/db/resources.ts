@@ -4,12 +4,12 @@ import { dbError, fields, upsert } from "./helpers.ts";
 
 export interface ResourceRow {
     id: number;
-    modified_on_disk: Date;
-    local_path: string;
-    server_path: string;
+    modifiedOnDisk: Date;
+    localPath: string;
+    serverPath: string;
 }
 
-type ResourceInsertRow = Omit<ResourceRow, "id">;
+export type ResourceInsertRow = Omit<ResourceRow, "id">;
 
 const f = fields<ResourceRow>();
 const table = "resource";
@@ -18,9 +18,9 @@ function* mapStar(rows: Rows): Generator<ResourceRow> {
     for (const [id, modified_on_disk, file, server_path] of rows) {
         yield {
             id: +id,
-            modified_on_disk: new Date(modified_on_disk),
-            local_path: file,
-            server_path: server_path,
+            modifiedOnDisk: new Date(modified_on_disk),
+            localPath: file,
+            serverPath: server_path,
         };
     }
 }
@@ -33,9 +33,9 @@ export class ResourceRepository {
             `
             CREATE TABLE IF NOT EXISTS ${table} (
                 ${f.id}               INTEGER   PRIMARY KEY AUTOINCREMENT NOT NULL,
-                ${f.modified_on_disk} DATETIME       NOT NULL,
-                ${f.local_path}       VARCHAR (2048) NOT NULL UNIQUE,
-                ${f.server_path}      VARCHAR (2048) NOT NULL UNIQUE
+                ${f.modifiedOnDisk} DATETIME       NOT NULL,
+                ${f.localPath}       VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.serverPath}      VARCHAR (2048) NOT NULL UNIQUE
             );
             `
         );
@@ -43,8 +43,8 @@ export class ResourceRepository {
 
     add = upsert<ResourceInsertRow>({
         table: table,
-        conflict: f.local_path,
-        args: [f.modified_on_disk, f.local_path, f.server_path],
+        conflict: f.localPath,
+        args: [f.modifiedOnDisk, f.localPath, f.serverPath],
         db: this.db,
     });
 
@@ -59,7 +59,7 @@ export class ResourceRepository {
             return [
                 ...mapStar(
                     this.db.query(
-                        `SELECT * FROM ${table} WHERE ${f.modified_on_disk} > :modified_on_disk_start`,
+                        `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :modified_on_disk_start`,
                         {
                             modified_on_disk_start,
                         }

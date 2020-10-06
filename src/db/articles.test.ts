@@ -22,11 +22,11 @@ Deno.test("articles add", () => {
     assertEquals(
         articles.add({
             created: new Date(),
-            local_path: "examples/post01.md",
+            localPath: "examples/post01.md",
             hash: "abcdefg",
             modified: new Date(),
-            modified_on_disk: new Date(),
-            server_path: "post01.html",
+            modifiedOnDisk: new Date(),
+            serverPath: "post01.html",
             html: "",
         }),
         {
@@ -45,22 +45,22 @@ Deno.test("articles getFrom", () => {
     // Older post, omitted by filter
     articles.add({
         created: new Date("2010-01-01"),
-        local_path: "examples/post01.md",
+        localPath: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
-        modified_on_disk: new Date("2019-01-03"),
-        server_path: "post01.html",
+        modifiedOnDisk: new Date("2019-01-03"),
+        serverPath: "post01.html",
         html: "first",
     });
 
     // Newer post, included by the filter (expected result)
     articles.add({
         created: new Date("2020-01-01"),
-        local_path: "examples/post02.md",
+        localPath: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
-        modified_on_disk: new Date("2020-01-03"),
-        server_path: "post02.html",
+        modifiedOnDisk: new Date("2020-01-03"),
+        serverPath: "post02.html",
         html: "second",
     });
 
@@ -71,11 +71,11 @@ Deno.test("articles getFrom", () => {
     assertEquals(res.result[0], {
         id: 2,
         created: new Date("2020-01-01"),
-        local_path: "examples/post02.md",
+        localPath: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
-        modified_on_disk: new Date("2020-01-03"),
-        server_path: "post02.html",
+        modifiedOnDisk: new Date("2020-01-03"),
+        serverPath: "post02.html",
         html: "second",
     } as ArticleRow);
     db.close(true);
@@ -89,22 +89,22 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
     // Older post
     articles.add({
         created: new Date("2010-01-01"),
-        local_path: "examples/post01.md",
+        localPath: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
-        modified_on_disk: new Date("2019-01-03"),
-        server_path: "post01.html",
+        modifiedOnDisk: new Date("2019-01-03"),
+        serverPath: "post01.html",
         html: "",
     });
 
     // Newer post
     articles.add({
         created: new Date("2020-01-01"),
-        local_path: "examples/post02.md",
+        localPath: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
-        modified_on_disk: new Date("2020-01-03"),
-        server_path: "post02.html",
+        modifiedOnDisk: new Date("2020-01-03"),
+        serverPath: "post02.html",
         html: "",
     });
 
@@ -124,22 +124,22 @@ Deno.test("articles cleanNonExisting", () => {
     // Older post
     articles.add({
         created: new Date("2010-01-01"),
-        local_path: "examples/post01.md",
+        localPath: "examples/post01.md",
         hash: "firstitem",
         modified: new Date("2019-01-02"),
-        modified_on_disk: new Date("2019-01-03"),
-        server_path: "post01.html",
+        modifiedOnDisk: new Date("2019-01-03"),
+        serverPath: "post01.html",
         html: "",
     });
 
     // Newer post
     articles.add({
         created: new Date("2020-01-01"),
-        local_path: "examples/post02.md",
+        localPath: "examples/post02.md",
         hash: "seconditem",
         modified: new Date("2020-01-02"),
-        modified_on_disk: new Date("2020-01-03"),
-        server_path: "post02.html",
+        modifiedOnDisk: new Date("2020-01-03"),
+        serverPath: "post02.html",
         html: "",
     });
 

@@ -7,13 +7,13 @@ export interface ArticleRow {
     hash: string;
     created: Date;
     modified: Date;
-    modified_on_disk: Date;
-    local_path: string;
-    server_path: string;
+    modifiedOnDisk: Date;
+    localPath: string;
+    serverPath: string;
     html: string;
 }
 
-type ArticleInsertRow = Omit<ArticleRow, "id">;
+export type ArticleInsertRow = Omit<ArticleRow, "id">;
 
 const f = fields<ArticleRow>();
 const table = "article";
@@ -30,9 +30,9 @@ function* mapStarArticle(rows: Rows): Generator<ArticleRow> {
             hash: hash,
             created: new Date(created),
             modified: new Date(modified),
-            modified_on_disk: new Date(modified_on_disk),
-            local_path: file,
-            server_path: server_path,
+            modifiedOnDisk: new Date(modified_on_disk),
+            localPath: file,
+            serverPath: server_path,
             html: html,
         };
     }
@@ -49,9 +49,9 @@ export class ArticleRepository {
                 ${f.hash}             VARCHAR (64)   NOT NULL,
                 ${f.created}          DATETIME       NOT NULL,
                 ${f.modified}         DATETIME       NOT NULL,
-                ${f.modified_on_disk} DATETIME       NOT NULL,
-                ${f.local_path}       VARCHAR (2048) NOT NULL UNIQUE,
-                ${f.server_path}      VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.modifiedOnDisk}   DATETIME       NOT NULL,
+                ${f.localPath}        VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.serverPath}       VARCHAR (2048) NOT NULL UNIQUE,
                 ${f.html}             VARCHAR (10048) NOT NULL DEFAULT ""
             );
             `
@@ -60,24 +60,16 @@ export class ArticleRepository {
 
     add = upsert<ArticleInsertRow>({
         db: this.db,
-        conflict: f.local_path,
+        conflict: f.localPath,
         table: table,
-        args: [
-            f.hash,
-            f.created,
-            f.modified,
-            f.modified_on_disk,
-            f.local_path,
-            f.server_path,
-            f.html,
-        ],
+        args: [f.hash, f.created, f.modified, f.modifiedOnDisk, f.localPath, f.serverPath, f.html],
     });
 
     cleanNonExisting(existingArticleFiles: string[]) {
         const questionmarks = existingArticleFiles.map(() => "?").join(",");
         return dbError(() => {
             return this.db.query(
-                `DELETE FROM ${table} WHERE ${f.local_path} NOT IN (${questionmarks})`,
+                `DELETE FROM ${table} WHERE ${f.localPath} NOT IN (${questionmarks})`,
                 existingArticleFiles
             );
         });
@@ -93,7 +85,7 @@ export class ArticleRepository {
     getFrom(modified_on_disk_start: Date) {
         return dbError(() => {
             const q = this.db.query(
-                `SELECT * FROM ${table} WHERE ${f.modified_on_disk} > :modified_on_disk_start`,
+                `SELECT * FROM ${table} WHERE ${f.modifiedOnDisk} > :modified_on_disk_start`,
                 {
                     modified_on_disk_start,
                 }
@@ -104,7 +96,7 @@ export class ArticleRepository {
 
     getMaxModifiedOnDisk() {
         return dbError(() => {
-            const [maxdate] = [...this.db.query(`SELECT MAX(${f.modified_on_disk}) FROM ${table}`)];
+            const [maxdate] = [...this.db.query(`SELECT MAX(${f.modifiedOnDisk}) FROM ${table}`)];
             if (!maxdate) {
                 throw new Error("No articles");
             }

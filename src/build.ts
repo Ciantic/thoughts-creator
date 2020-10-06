@@ -109,7 +109,7 @@ async function writeFiles({
         workers = workers.concat(
             articles.result.map((row) =>
                 promisePool.open(async () => {
-                    const outputFile = join(outputPath, row.server_path, "index.html");
+                    const outputFile = join(outputPath, row.serverPath, "index.html");
                     if (!outputFile.startsWith(outputPath)) {
                         throw new Error(`Incorrect article path ${outputFile}`);
                     }
@@ -128,14 +128,14 @@ async function writeFiles({
         workers = workers.concat(
             resources.result.map((row) =>
                 promisePool.open(async () => {
-                    const outputFile = join(outputPath, row.server_path);
+                    const outputFile = join(outputPath, row.serverPath);
                     if (!outputFile.startsWith(outputPath)) {
                         throw new Error(`Incorrect article path ${outputFile}`);
                     }
                     await Deno.mkdir(dirname(outputFile), {
                         recursive: true,
                     });
-                    await Deno.copyFile(row.local_path, outputFile);
+                    await Deno.copyFile(row.localPath, outputFile);
                     return outputFile;
                 })
             )
@@ -178,9 +178,9 @@ async function buildResources(
             let stat = await Deno.stat(realFilePath);
             let serverPath = posix.join(server_path, possibleUrl);
             db.resources.add({
-                local_path: realFilePath,
-                server_path: serverPath,
-                modified_on_disk: stat.mtime ?? new Date(),
+                localPath: realFilePath,
+                serverPath: serverPath,
+                modifiedOnDisk: stat.mtime ?? new Date(),
             });
         } else {
             // TODO: Relative links to other articles perhaps?
@@ -208,9 +208,9 @@ async function buildArticle(opts: { db: DbContext; articleFile: File }) {
         created: created,
         hash: "",
         modified: modified,
-        modified_on_disk: mtime,
-        local_path: realpath,
-        server_path: serverpath,
+        modifiedOnDisk: mtime,
+        localPath: realpath,
+        serverPath: serverpath,
         html: html,
     });
     await buildResources(db, dirname(realpath), serverpath, html);

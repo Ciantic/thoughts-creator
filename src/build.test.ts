@@ -38,7 +38,7 @@ Deno.test("build db works", async () => {
     // Articles can be in any order, because they are created in parallel, sort
     // the results and remove IDs.
     articles.result
-        ?.sort((a, b) => (a.local_path > b.local_path ? 1 : -1))
+        ?.sort((a, b) => (a.localPath > b.localPath ? 1 : -1))
         .forEach((f) => (f.id = 0));
     if (!articles.result) {
         throw new Error(articles.error);
@@ -60,9 +60,9 @@ Deno.test("build db works", async () => {
     assertEquals(resources.result, [
         {
             id: 1,
-            local_path: join(await Deno.realPath("./examples/res01.svg"), ""),
-            modified_on_disk: (await Deno.stat("./examples/res01.svg")).mtime,
-            server_path: "2020/10/post02/res01.svg",
+            localPath: join(await Deno.realPath("./examples/res01.svg"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/res01.svg")).mtime,
+            serverPath: "2020/10/post02/res01.svg",
         },
     ] as ResourceRow[]);
 
@@ -76,10 +76,10 @@ Deno.test("build db works", async () => {
             // Git modified
             modified: new Date("2020-09-06T22:52:10.000Z"),
 
-            modified_on_disk: (await Deno.stat("./examples/post01.md")).mtime,
-            local_path: join(await Deno.realPath("./examples/post01.md"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/post01.md")).mtime,
+            localPath: join(await Deno.realPath("./examples/post01.md"), ""),
             hash: "",
-            server_path: "2020/09/post01/",
+            serverPath: "2020/09/post01/",
             html: articles.result[0].html,
         },
         {
@@ -91,10 +91,10 @@ Deno.test("build db works", async () => {
             // Git modified
             modified: new Date("2020-10-03T16:31:11.000Z"),
 
-            modified_on_disk: (await Deno.stat("./examples/post02.md")).mtime,
-            local_path: join(await Deno.realPath("./examples/post02.md"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/post02.md")).mtime,
+            localPath: join(await Deno.realPath("./examples/post02.md"), ""),
             hash: "",
-            server_path: "2020/10/post02/",
+            serverPath: "2020/10/post02/",
             html: articles.result[1].html,
         },
     ] as ArticleRow[]);

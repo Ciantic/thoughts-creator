@@ -11,13 +11,13 @@ Deno.test("resources createSchema", () => {
 
 Deno.test("resources add", () => {
     const db = new DB(":memory:");
-    const articles = new ResourceRepository(db);
-    articles.createSchema();
+    const repository = new ResourceRepository(db);
+    repository.createSchema();
     assertEquals(
-        articles.add({
-            local_path: "examples/res01.svg",
-            modified_on_disk: new Date(),
-            server_path: "res01.svg",
+        repository.add({
+            localPath: "examples/res01.svg",
+            modifiedOnDisk: new Date(),
+            serverPath: "res01.svg",
         }),
         {
             result: 1,
@@ -28,32 +28,32 @@ Deno.test("resources add", () => {
 
 Deno.test("resources getFrom", () => {
     const db = new DB(":memory:");
-    const resources = new ResourceRepository(db);
-    resources.createSchema();
+    const repository = new ResourceRepository(db);
+    repository.createSchema();
     // Older post, omitted by filter
-    resources.add({
-        local_path: "examples/post01.md",
-        modified_on_disk: new Date("2019-01-03"),
-        server_path: "post01.html",
+    repository.add({
+        localPath: "examples/post01.md",
+        modifiedOnDisk: new Date("2019-01-03"),
+        serverPath: "post01.html",
     });
 
     // Newer post, included by the filter (expected result)
-    resources.add({
-        local_path: "examples/post02.md",
-        modified_on_disk: new Date("2020-01-03"),
-        server_path: "post02.html",
+    repository.add({
+        localPath: "examples/post02.md",
+        modifiedOnDisk: new Date("2020-01-03"),
+        serverPath: "post02.html",
     });
 
-    const res = resources.getFrom(new Date("2020-01-01"));
+    const res = repository.getFrom(new Date("2020-01-01"));
     assertEquals(res, {
         result: [
             {
                 id: 2,
-                local_path: "examples/post02.md",
-                modified_on_disk: new Date("2020-01-03"),
-                server_path: "post02.html",
-            },
-        ] as ResourceRow[],
+                localPath: "examples/post02.md",
+                modifiedOnDisk: new Date("2020-01-03"),
+                serverPath: "post02.html",
+            } as ResourceRow,
+        ],
     });
     db.close(true);
 });
