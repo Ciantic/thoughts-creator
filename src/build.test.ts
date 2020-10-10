@@ -2,7 +2,7 @@ import {
     assert,
     assertEquals,
     assertStrContains,
-    assertThrowsAsync,
+    assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
 import { createDatabase, generate } from "./build.ts";
 import { join } from "https://deno.land/std/path/mod.ts";
@@ -27,10 +27,11 @@ Deno.test("build db works", async () => {
         db: db,
         articleDir: "./examples/",
         outputDir: "./.out.test/",
+        rootDir: "./examples/",
         layoutArticle: async (row) => {
             return `<body>${row.html}</body>`;
         },
-        removeOldOutputFiles: true,
+        removeExtraOutputFiles: true,
     });
     const articles = db.articles.getFrom(new Date("2020-01-01"));
     const resources = db.resources.getFrom(new Date("2020-01-01"));
@@ -55,7 +56,9 @@ Deno.test("build db works", async () => {
         await Deno.readTextFile("./.out.test/2020/10/post02/index.html"),
         `<body><h1 id="second-post">Second post</h1>`
     );
-    // assertEquals(gen, {});
+
+    // Ensure that cleaning extra files works
+    assertThrows(() => Deno.statSync("./.out.test/foo.html"));
 
     assertEquals(resources.result, [
         {

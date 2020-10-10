@@ -1,44 +1,59 @@
 import { parse } from "https://deno.land/std/flags/mod.ts";
+import docopt, { DocOptions } from "https://deno.land/x/docopt@v1.0.1/src/docopt.ts";
 import { generate, createDatabase } from "./build.ts";
 import { getRecursivelyFilesWithExt } from "./utils/fs.ts";
 
-function usage() {
-    console.log("Build markdown blog");
-    console.log("usage: build.ts [DIR]");
-    console.log("  [DIR]  Directory full of markdown files");
+const doc = `
+Build markdown blog 0.0.1
+
+Usage:
+  ${import.meta.url} [options]
+
+Options:
+  -h --help             Show this screen.
+  --articles=<dir>      Article directory [default: articles]
+  --root=<dir>          Root directory. [Default: root]
+  --out=<dir>           Output directory. [Default: out]
+  --clean-out           Clean output directory after build.
+`;
+let opts: {
+    "--help": boolean;
+    "--articles": string;
+    "--root": string;
+    "--out": string;
+    "--clean-out": boolean;
+};
+
+try {
+    opts = docopt(doc) as any;
+} catch (e) {
+    console.error(e.message);
     Deno.exit(1);
 }
 
-// If --help or missing [DIR]
-let args = parse(Deno.args);
-if (args._.length != 1 || args.help) {
-    usage();
-}
+async function main() {
+    // Article files
+    const db = await createDatabase(".cache.db");
+    const { failedArticles, failedResources } = await generate({
+        db,
+        articleDir: opts["--articles"],
+        outputDir: opts["--out"],
+        rootDir: opts["--root"],
+        removeExtraOutputFiles: opts["--clean-out"] === true,
+    });
 
-// Directory of markdown files
-let dir = args._[0] as string;
-
-// Article files
-const db = await createDatabase(".cache.db");
-const { failed_files } = await generate({
-    db,
-    articleDir: dir,
-    outputDir: ".out",
-});
-
-// Report results
-if (failed_files.length > 0) {
-    console.error("Following files failed to build:");
-    for (const file_error of failed_files) {
-        console.error(`File: ${file_error.file}`);
-        console.error(`Reason:`, file_error.reason);
-        console.error("");
+    // Report results
+    if (failedArticles.length > 0) {
+        console.error("Following files failed to build:");
+        for (const file of failedArticles) {
+            console.error(`File: ${file}`);
+            console.error("");
+        }
+        Deno.exit(1);
+    } else {
+        console.log("All files built.");
+        Deno.exit(0);
     }
-    Deno.exit(1);
-} else {
-    console.log("All files built.");
-    Deno.exit(0);
 }
 
-// let completed = await generate(db, ".out");
-// Deno.exit(!completed ? 1 : 0);
+await main();

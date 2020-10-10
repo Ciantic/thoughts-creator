@@ -23,9 +23,17 @@ type GenerateOptions = {
     db: DbContext;
     articleDir: string;
     outputDir: string;
+    rootDir: string;
     layoutArticle?: (row: ArticleRow) => Promise<string>;
-    removeOldOutputFiles: boolean;
+    removeExtraOutputFiles: boolean;
     // layoutPage?: (row)
+};
+
+type GenerateResult = {
+    writtenArticles: string[];
+    writtenResources: string[];
+    failedArticles: string[];
+    failedResources: string[];
 };
 
 /**
@@ -33,7 +41,7 @@ type GenerateOptions = {
  *
  * @param files Markdown files as list
  */
-export async function generate(opts: GenerateOptions) {
+export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     const { db, outputDir, articleDir, layoutArticle } = opts;
     // TODO: remove dummy join https://github.com/denoland/deno/issues/5685
     const outputPath = join(await Deno.realPath(outputDir), "");
@@ -59,7 +67,7 @@ export async function generate(opts: GenerateOptions) {
         })
     );
     const articleCompletions = await Promise.allSettled(articleWorkers);
-    const failed_files: { file: string; reason: any }[] = [];
+    const failedFiles: { file: string; reason: any }[] = [];
 
     // Collect the results
     for (const [i, res] of articleCompletions.entries()) {
@@ -67,7 +75,7 @@ export async function generate(opts: GenerateOptions) {
         if (res.status == "fulfilled") {
             // Succeeded
         } else if (res.status == "rejected") {
-            failed_files.push({
+            failedFiles.push({
                 file: file.path,
                 reason: res.reason,
             });
@@ -76,12 +84,15 @@ export async function generate(opts: GenerateOptions) {
 
     const writtenFiles = await writeFiles({ db, outputPath, layoutArticle });
 
-    if (opts.removeOldOutputFiles) {
-        await removeOldOutputFiles(outputPath, writtenFiles);
+    if (opts.removeExtraOutputFiles) {
+        await removeExtraOutputFiles(outputPath, writtenFiles);
     }
 
     return {
-        failed_files,
+        writtenArticles: [],
+        writtenResources: [],
+        failedArticles: [],
+        failedResources: [],
     };
 }
 
@@ -102,56 +113,62 @@ async function writeFiles({
 }) {
     const encoder = new TextEncoder();
     const promisePool = new PromisePool(16);
-    let workers: Promise<string>[] = [];
+    let articleWorkers: Promise<string>[] = [];
+    let resourceWorkers: Promise<string>[] = [];
+    let writtenArticles = [] as string[];
+    let writtenResources = [] as string[];
 
     const articles = db.articles.getAll();
     if (articles.result)
-        workers = workers.concat(
-            articles.result.map((row) =>
-                promisePool.open(async () => {
-                    const outputFile = join(outputPath, row.serverPath, "index.html");
-                    if (!outputFile.startsWith(outputPath)) {
-                        throw new Error(`Incorrect article path ${outputFile}`);
-                    }
-                    await Deno.mkdir(dirname(outputFile), {
-                        recursive: true,
-                    });
-                    const html = layoutArticle ? await layoutArticle(row) : row.html;
-                    await Deno.writeFile(outputFile, encoder.encode(html));
-                    return outputFile;
-                })
-            )
+        articleWorkers = articles.result.map((row) =>
+            promisePool.open(async () => {
+                const outputFile = join(outputPath, row.serverPath, "index.html");
+                if (!outputFile.startsWith(outputPath)) {
+                    throw new Error(`Incorrect article path ${outputFile}`);
+                }
+                await Deno.mkdir(dirname(outputFile), {
+                    recursive: true,
+                });
+                const html = layoutArticle ? await layoutArticle(row) : row.html;
+                try {
+                    await buildResources(db, dirname(row.localPath), row.serverPath, html);
+                } catch (e) {
+                    // TODO: Append to resource build failures
+                }
+                await Deno.writeFile(outputFile, encoder.encode(html));
+                return outputFile;
+            })
         );
+
+    writtenArticles = await Promise.all(articleWorkers);
 
     const resources = db.resources.getAll();
     if (resources.result)
-        workers = workers.concat(
-            resources.result.map((row) =>
-                promisePool.open(async () => {
-                    const outputFile = join(outputPath, row.serverPath);
-                    if (!outputFile.startsWith(outputPath)) {
-                        throw new Error(`Incorrect article path ${outputFile}`);
-                    }
-                    await Deno.mkdir(dirname(outputFile), {
-                        recursive: true,
-                    });
-                    await Deno.copyFile(row.localPath, outputFile);
-                    return outputFile;
-                })
-            )
+        resourceWorkers = resources.result.map((row) =>
+            promisePool.open(async () => {
+                const outputFile = join(outputPath, row.serverPath);
+                if (!outputFile.startsWith(outputPath)) {
+                    throw new Error(`Incorrect article path ${outputFile}`);
+                }
+                await Deno.mkdir(dirname(outputFile), {
+                    recursive: true,
+                });
+                await Deno.copyFile(row.localPath, outputFile);
+                return outputFile;
+            })
         );
 
-    return await Promise.all(workers);
+    writtenResources = await Promise.all(resourceWorkers);
+    return [...writtenArticles, ...writtenResources];
 }
 
-async function removeOldOutputFiles(outputPath: string, writtenFiles: string[]) {
+async function removeExtraOutputFiles(outputPath: string, writtenFiles: string[]) {
     let writtenFilesSet = new Set(writtenFiles);
     let oldOutputFiles = await recursiveReaddir(outputPath);
-    let remainingOldFiles = oldOutputFiles.filter((x) => !writtenFilesSet.has(x));
-    console.log("Delete", remainingOldFiles, writtenFilesSet);
-    // let removals = remainingOldFiles.map((f) => Deno.remove(f));
-
-    // return await Promise.all(removals);
+    let extraFiles = oldOutputFiles.filter((x) => !writtenFilesSet.has(x));
+    let removals = extraFiles.map((f) => Deno.remove(f));
+    await Promise.all(removals);
+    return extraFiles;
 }
 
 /**
@@ -159,8 +176,8 @@ async function removeOldOutputFiles(outputPath: string, writtenFiles: string[]) 
  */
 async function buildResources(
     db: DbContext,
-    local_path: string,
-    server_path: string,
+    htmlLocalDir: string,
+    htmlServerPath: string,
     html: string
 ) {
     let matches = [...html.matchAll(/href="(.*?)"/g)];
@@ -173,10 +190,10 @@ async function buildResources(
             // TODO: What to do with bare hash links?
         } else if (possibleUrl.match(/\.([^\./]+)$/)) {
             // File with extension, treat as a resource file
-            let filePath = join(local_path, possibleUrl);
+            let filePath = join(htmlLocalDir, possibleUrl);
             let realFilePath = join(await Deno.realPath(filePath), "");
             let stat = await Deno.stat(realFilePath);
-            let serverPath = posix.join(server_path, possibleUrl);
+            let serverPath = posix.join(htmlServerPath, possibleUrl);
             db.resources.add({
                 localPath: realFilePath,
                 serverPath: serverPath,
