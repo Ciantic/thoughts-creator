@@ -1,10 +1,12 @@
-import { recursiveReaddir } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
+import { recursiveReaddir as rec } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
 import { join, extname } from "https://deno.land/std/path/mod.ts";
 
 // export const recursiveReaddir = recursiveReaddir;
 
+export const readDirRecursive = rec;
+
 export async function getRecursivelyFilesWithExt(dir: string, ext: string) {
-    return (await recursiveReaddir(dir)).filter((file) => extname(file) === "." + ext);
+    return (await rec(dir)).filter((file) => extname(file) === "." + ext);
 }
 
 export class File {

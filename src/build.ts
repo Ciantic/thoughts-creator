@@ -1,12 +1,10 @@
-import { markdown } from "./utils/markdown.ts";
+import { basename, dirname, join, posix } from "https://deno.land/std/path/mod.ts";
 
+import { File, getRecursivelyFilesWithExt, readDirRecursive } from "./utils/fs.ts";
+import { markdown } from "./utils/markdown.ts";
 import { gitLastEdit, gitCreated } from "./utils/git.ts";
 import { DbContext } from "./db/mod.ts";
-import { File, getRecursivelyFilesWithExt } from "./utils/fs.ts";
-import PromisePool from "https://unpkg.com/native-promise-pool@^3.15.0/edition-deno/index.ts";
-import { basename, dirname, join, posix } from "https://deno.land/std/path/mod.ts";
 import { ArticleRow } from "./db/articles.ts";
-import { recursiveReaddir } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
 
 /**
  * Create database
@@ -56,17 +54,14 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     db.articles.cleanNonExisting(articleRealPaths);
 
     // Runs 16 simultaneous promises at the time
-    const promisePool = new PromisePool(16);
-    const articleWorkers = articleFiles.map((articleFile) =>
-        promisePool.open(async () => {
-            if (!dbMaxDate || (await articleFile.modified()) > dbMaxDate)
-                return buildArticle({
-                    articleFile,
-                    db,
-                    rootDir,
-                });
-        })
-    );
+    const articleWorkers = articleFiles.map(async (articleFile) => {
+        if (!dbMaxDate || (await articleFile.modified()) > dbMaxDate)
+            return buildArticle({
+                articleFile,
+                db,
+                rootDir,
+            });
+    });
     const articleCompletions = await Promise.allSettled(articleWorkers);
     const failedFiles: { file: string; reason: any }[] = [];
 
@@ -88,6 +83,9 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     if (opts.removeExtraOutputFiles) {
         await removeExtraOutputFiles(outputPath, writtenFiles);
     }
+
+    // TODO: writtenArticles, writtenResources, failedArticles and
+    // failedResources aren't populated
 
     return {
         writtenArticles: [],
@@ -115,7 +113,7 @@ async function writeFiles({
     layoutArticle?: (row: ArticleRow) => Promise<string>;
 }) {
     const encoder = new TextEncoder();
-    const promisePool = new PromisePool(16);
+    // const promisePool = new PromisePool(16);
     let articleWorkers: Promise<string>[] = [];
     let resourceWorkers: Promise<string>[] = [];
     let writtenArticles = [] as string[];
@@ -123,49 +121,45 @@ async function writeFiles({
 
     const articles = db.articles.getAll();
     if (articles.result)
-        articleWorkers = articles.result.map((row) =>
-            promisePool.open(async () => {
-                const outputFile = join(outputPath, row.serverPath, "index.html");
-                if (!outputFile.startsWith(outputPath)) {
-                    throw new Error(`Incorrect article path ${outputFile}`);
-                }
-                await Deno.mkdir(dirname(outputFile), {
-                    recursive: true,
+        articleWorkers = articles.result.map(async (row) => {
+            const outputFile = join(outputPath, row.serverPath, "index.html");
+            if (!outputFile.startsWith(outputPath)) {
+                throw new Error(`Incorrect article path ${outputFile}`);
+            }
+            await Deno.mkdir(dirname(outputFile), {
+                recursive: true,
+            });
+            const html = layoutArticle ? await layoutArticle(row) : row.html;
+            try {
+                await buildResources({
+                    db: db,
+                    rootDir,
+                    htmlLocalDir: dirname(row.localPath),
+                    htmlServerPath: row.serverPath,
+                    html,
                 });
-                const html = layoutArticle ? await layoutArticle(row) : row.html;
-                try {
-                    await buildResources({
-                        db: db,
-                        rootDir,
-                        htmlLocalDir: dirname(row.localPath),
-                        htmlServerPath: row.serverPath,
-                        html,
-                    });
-                } catch (e) {
-                    // TODO: Append to resource build failures
-                }
-                await Deno.writeFile(outputFile, encoder.encode(html));
-                return outputFile;
-            })
-        );
+            } catch (e) {
+                // TODO: Append to resource build failures
+            }
+            await Deno.writeFile(outputFile, encoder.encode(html));
+            return outputFile;
+        });
 
     writtenArticles = await Promise.all(articleWorkers);
 
     const resources = db.resources.getAll();
     if (resources.result)
-        resourceWorkers = resources.result.map((row) =>
-            promisePool.open(async () => {
-                const outputFile = join(outputPath, row.serverPath);
-                if (!outputFile.startsWith(outputPath)) {
-                    throw new Error(`Incorrect article path ${outputFile}`);
-                }
-                await Deno.mkdir(dirname(outputFile), {
-                    recursive: true,
-                });
-                await Deno.copyFile(row.localPath, outputFile);
-                return outputFile;
-            })
-        );
+        resourceWorkers = resources.result.map(async (row) => {
+            const outputFile = join(outputPath, row.serverPath);
+            if (!outputFile.startsWith(outputPath)) {
+                throw new Error(`Incorrect article path ${outputFile}`);
+            }
+            await Deno.mkdir(dirname(outputFile), {
+                recursive: true,
+            });
+            await Deno.copyFile(row.localPath, outputFile);
+            return outputFile;
+        });
 
     writtenResources = await Promise.all(resourceWorkers);
     return [...writtenArticles, ...writtenResources];
@@ -173,7 +167,7 @@ async function writeFiles({
 
 async function removeExtraOutputFiles(outputPath: string, writtenFiles: string[]) {
     let writtenFilesSet = new Set(writtenFiles);
-    let oldOutputFiles = await recursiveReaddir(outputPath);
+    let oldOutputFiles = await readDirRecursive(outputPath);
     let extraFiles = oldOutputFiles.filter((x) => !writtenFilesSet.has(x));
     let removals = extraFiles.map((f) => Deno.remove(f));
     await Promise.all(removals);
