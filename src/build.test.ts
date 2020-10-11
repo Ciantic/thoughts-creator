@@ -4,7 +4,7 @@ import {
     assertStrContains,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { createDatabase, generate } from "./build.ts";
+import { generate } from "./build.ts";
 import { join } from "https://deno.land/std/path/mod.ts";
 import type { ArticleRow } from "./db/articles.ts";
 import { ResourceRow } from "./db/resources.ts";
@@ -21,10 +21,8 @@ Deno.test("build db works", async () => {
         await Deno.remove(".cache.test.db");
     } catch (e) {}
 
-    const db = await createDatabase(".cache.test.db");
-
-    const gen = await generate({
-        db: db,
+    const { db } = await generate({
+        dbFile: ".cache.test.db",
         articleDir: "./examples/articles/",
         outputDir: "./.out.test/",
         rootDir: "./examples/layout/",

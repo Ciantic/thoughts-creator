@@ -11,14 +11,14 @@ import { ArticleRow } from "./db/articles.ts";
  *
  * @param articleFiles
  */
-export async function createDatabase(databaseFile: string) {
+async function createDatabase(databaseFile: string) {
     const db = new DbContext(databaseFile);
     db.createSchema();
     return db;
 }
 
 type GenerateOptions = {
-    db: DbContext;
+    dbFile: string;
     articleDir: string;
     outputDir: string;
     rootDir: string;
@@ -28,6 +28,7 @@ type GenerateOptions = {
 };
 
 type GenerateResult = {
+    db: DbContext;
     writtenArticles: string[];
     writtenResources: string[];
     failedArticles: string[];
@@ -40,8 +41,9 @@ type GenerateResult = {
  * @param files Markdown files as list
  */
 export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
-    const { db, outputDir, articleDir, layoutArticle, rootDir } = opts;
+    const { dbFile, outputDir, articleDir, layoutArticle, rootDir } = opts;
     // TODO: remove dummy join https://github.com/denoland/deno/issues/5685
+    const db = await createDatabase(dbFile);
     const outputPath = join(await Deno.realPath(outputDir), "");
     const articlePath = join(await Deno.realPath(articleDir), "");
     const articleFilenames = await getRecursivelyFilesWithExt(articlePath, "md");
@@ -88,6 +90,7 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     // failedResources aren't populated
 
     return {
+        db,
         writtenArticles: [],
         writtenResources: [],
         failedArticles: [],
