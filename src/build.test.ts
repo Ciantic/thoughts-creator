@@ -29,7 +29,7 @@ Deno.test("build db works", async () => {
         outputDir: "./.out.test/",
         rootDir: "./examples/layout/",
         layoutArticle: async (row) => {
-            return `<body>${row.html}</body>`;
+            return `<html><head><link href="/style.css" /><body>${row.html}</body>`;
         },
         removeExtraOutputFiles: true,
     });
@@ -66,6 +66,12 @@ Deno.test("build db works", async () => {
             localPath: join(await Deno.realPath("./examples/articles/res01.svg"), ""),
             modifiedOnDisk: (await Deno.stat("./examples/articles/res01.svg")).mtime,
             serverPath: "2020/10/post02/res01.svg",
+        },
+        {
+            id: 2,
+            modifiedOnDisk: new Date("2020-10-11T17:15:39.083Z"),
+            localPath: "C:\\Source\\Blog\\simples\\examples\\layout\\style.css",
+            serverPath: "/style.css",
         },
     ] as ResourceRow[]);
 

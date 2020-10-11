@@ -42,7 +42,7 @@ type GenerateResult = {
  * @param files Markdown files as list
  */
 export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
-    const { db, outputDir, articleDir, layoutArticle } = opts;
+    const { db, outputDir, articleDir, layoutArticle, rootDir } = opts;
     // TODO: remove dummy join https://github.com/denoland/deno/issues/5685
     const outputPath = join(await Deno.realPath(outputDir), "");
     const articlePath = join(await Deno.realPath(articleDir), "");
@@ -63,6 +63,7 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
                 return buildArticle({
                     articleFile,
                     db,
+                    rootDir,
                 });
         })
     );
@@ -82,7 +83,7 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
         }
     }
 
-    const writtenFiles = await writeFiles({ db, outputPath, layoutArticle });
+    const writtenFiles = await writeFiles({ db, outputPath, layoutArticle, rootDir });
 
     if (opts.removeExtraOutputFiles) {
         await removeExtraOutputFiles(outputPath, writtenFiles);
@@ -106,8 +107,10 @@ async function writeFiles({
     db,
     outputPath,
     layoutArticle,
+    rootDir,
 }: {
     db: DbContext;
+    rootDir: string;
     outputPath: string;
     layoutArticle?: (row: ArticleRow) => Promise<string>;
 }) {
@@ -131,7 +134,13 @@ async function writeFiles({
                 });
                 const html = layoutArticle ? await layoutArticle(row) : row.html;
                 try {
-                    await buildResources(db, dirname(row.localPath), row.serverPath, html);
+                    await buildResources({
+                        db: db,
+                        rootDir,
+                        htmlLocalDir: dirname(row.localPath),
+                        htmlServerPath: row.serverPath,
+                        html,
+                    });
                 } catch (e) {
                     // TODO: Append to resource build failures
                 }
@@ -174,33 +183,54 @@ async function removeExtraOutputFiles(outputPath: string, writtenFiles: string[]
 /**
  * Build resource
  */
-async function buildResources(
-    db: DbContext,
-    htmlLocalDir: string,
-    htmlServerPath: string,
-    html: string
-) {
+async function buildResources(opts: {
+    db: DbContext;
+    rootDir: string;
+    htmlLocalDir: string;
+    htmlServerPath: string;
+    html: string;
+}) {
+    const { db, htmlLocalDir, htmlServerPath, html, rootDir } = opts;
     let matches = [...html.matchAll(/href="(.*?)"/g)];
     matches = [...matches, ...html.matchAll(/src="(.*?)"/g)];
+    const hasFileExtension = (s: string) => !!s.match(/\.([^\./]+)$/);
     for (const [_, possibleUrl] of matches) {
         if (possibleUrl.match(/:\/\//)) {
+            // Fully qualified URL
             // TODO: Collect external urls to database for screenshotting and
             // alive tests
         } else if (possibleUrl.startsWith("#")) {
             // TODO: What to do with bare hash links?
-        } else if (possibleUrl.match(/\.([^\./]+)$/)) {
-            // File with extension, treat as a resource file
-            let filePath = join(htmlLocalDir, possibleUrl);
-            let realFilePath = join(await Deno.realPath(filePath), "");
-            let stat = await Deno.stat(realFilePath);
-            let serverPath = posix.join(htmlServerPath, possibleUrl);
-            db.resources.add({
-                localPath: realFilePath,
-                serverPath: serverPath,
-                modifiedOnDisk: stat.mtime ?? new Date(),
-            });
+        } else if (possibleUrl.startsWith("/")) {
+            // Url pointing to root of the server
+            if (hasFileExtension(possibleUrl)) {
+                let filePath = join(rootDir, possibleUrl);
+                let realFilePath = join(await Deno.realPath(filePath), "");
+                let stat = await Deno.stat(realFilePath);
+                let serverPath = posix.join("/", possibleUrl);
+                db.resources.add({
+                    localPath: realFilePath,
+                    serverPath: serverPath,
+                    modifiedOnDisk: stat.mtime ?? new Date(),
+                });
+            }
         } else {
-            // TODO: Relative links to other articles perhaps?
+            // Relative url
+
+            // Relative file with extension, treat as a resource file
+            if (hasFileExtension(possibleUrl)) {
+                let filePath = join(htmlLocalDir, possibleUrl);
+                let realFilePath = join(await Deno.realPath(filePath), "");
+                let stat = await Deno.stat(realFilePath);
+                let serverPath = posix.join(htmlServerPath, possibleUrl);
+                db.resources.add({
+                    localPath: realFilePath,
+                    serverPath: serverPath,
+                    modifiedOnDisk: stat.mtime ?? new Date(),
+                });
+            } else {
+                // TODO: Relative links to other articles perhaps?
+            }
         }
     }
 }
@@ -208,8 +238,8 @@ async function buildResources(
 /**
  * Build article
  */
-async function buildArticle(opts: { db: DbContext; articleFile: File }) {
-    let { articleFile, db } = opts;
+async function buildArticle(opts: { db: DbContext; articleFile: File; rootDir: string }) {
+    let { articleFile, db, rootDir } = opts;
     let mtime = await articleFile.modified();
     let realpath = await articleFile.realpath();
     const created = await gitCreated(articleFile.path);
@@ -230,5 +260,11 @@ async function buildArticle(opts: { db: DbContext; articleFile: File }) {
         serverPath: serverpath,
         html: html,
     });
-    await buildResources(db, dirname(realpath), serverpath, html);
+    await buildResources({
+        db: db,
+        rootDir: rootDir,
+        htmlLocalDir: dirname(realpath),
+        htmlServerPath: serverpath,
+        html,
+    });
 }
