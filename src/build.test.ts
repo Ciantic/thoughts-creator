@@ -47,7 +47,7 @@ Deno.test("build db works", async () => {
 
     assertStrContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
     assertStrContains(
-        await Deno.readTextFile("./.out.test/2020/09/post01/index.html"),
+        await Deno.readTextFile("./.out.test/2020/10/post01/index.html"),
         `<body><h1 id="example-post">Example post</h1>`
     );
 
@@ -74,25 +74,25 @@ Deno.test("build db works", async () => {
             id: 0,
 
             // Git created
-            created: new Date("2020-09-06T22:52:10.000Z"),
+            created: new Date("2020-10-11T17:18:37.000Z"),
 
             // Git modified
-            modified: new Date("2020-09-06T22:52:10.000Z"),
+            modified: new Date("2020-10-11T17:18:37.000Z"),
 
             modifiedOnDisk: (await Deno.stat("./examples/articles/post01.md")).mtime,
             localPath: join(await Deno.realPath("./examples/articles/post01.md"), ""),
             hash: "",
-            serverPath: "2020/09/post01/",
+            serverPath: "2020/10/post01/",
             html: articles.result[0].html,
         },
         {
             id: 0,
 
             // Git created
-            created: new Date("2020-10-03T16:31:11.000Z"),
+            created: new Date("2020-10-11T17:18:37.000Z"),
 
             // Git modified
-            modified: new Date("2020-10-03T16:31:11.000Z"),
+            modified: new Date("2020-10-11T17:18:37.000Z"),
 
             modifiedOnDisk: (await Deno.stat("./examples/articles/post02.md")).mtime,
             localPath: join(await Deno.realPath("./examples/articles/post02.md"), ""),
