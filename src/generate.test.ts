@@ -4,7 +4,7 @@ import {
     assertStrContains,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
-import { generate } from "./build.ts";
+import { generate } from "./generate.ts";
 import { join } from "https://deno.land/std/path/mod.ts";
 import type { ArticleRow } from "./db/articles.ts";
 import { ResourceRow } from "./db/resources.ts";
