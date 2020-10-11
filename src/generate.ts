@@ -6,26 +6,11 @@ import { gitLastEdit, gitCreated } from "./utils/git.ts";
 import { DbContext } from "./db/mod.ts";
 import { ArticleRow } from "./db/articles.ts";
 
-/**
- * Create database
- *
- * @param articleFiles
- */
 async function createDatabase(databaseFile: string) {
     const db = new DbContext(databaseFile);
     db.createSchema();
     return db;
 }
-
-type GenerateOptions = {
-    dbFile: string;
-    articleDir: string;
-    outputDir: string;
-    rootDir: string;
-    layoutArticle?: (row: ArticleRow) => Promise<string>;
-    removeExtraOutputFiles: boolean;
-    // layoutPage?: (row)
-};
 
 type GenerateResult = {
     db: DbContext;
@@ -35,16 +20,27 @@ type GenerateResult = {
     failedResources: string[];
 };
 
-/**
- * Generate HTML
- *
- * @param files Markdown files as list
- */
-export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
-    const { dbFile, outputDir, articleDir, layoutArticle, rootDir } = opts;
+const DEFAULT_GENERATE_PARAMS = {
+    articleDir: "articles",
+    outputDir: "out",
+    rootDir: "root",
+    dbFile: ".cache.db",
+    cleanOutput: false,
+    layoutArticle: undefined as ((db: DbContext, row: ArticleRow) => Promise<string>) | undefined,
+};
+
+export async function generate(
+    opts: Partial<typeof DEFAULT_GENERATE_PARAMS>
+): Promise<GenerateResult> {
+    const { dbFile, outputDir, articleDir, layoutArticle, rootDir, cleanOutput } = Object.assign(
+        {},
+        DEFAULT_GENERATE_PARAMS,
+        opts
+    );
+
     // TODO: remove dummy join https://github.com/denoland/deno/issues/5685
     const db = await createDatabase(dbFile);
-    const outputPath = join(await Deno.realPath(outputDir), "");
+
     const articlePath = join(await Deno.realPath(articleDir), "");
     const articleFilenames = await getRecursivelyFilesWithExt(articlePath, "md");
     const articleFiles = articleFilenames.map((f) => new File(f));
@@ -55,7 +51,6 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
     const articleRealPaths = await Promise.all(articleFiles.map((f) => f.realpath()));
     db.articles.cleanNonExisting(articleRealPaths);
 
-    // Runs 16 simultaneous promises at the time
     const articleWorkers = articleFiles.map(async (articleFile) => {
         if (!dbMaxDate || (await articleFile.modified()) > dbMaxDate)
             return buildArticle({
@@ -80,9 +75,19 @@ export async function generate(opts: GenerateOptions): Promise<GenerateResult> {
         }
     }
 
-    const writtenFiles = await writeFiles({ db, outputPath, layoutArticle, rootDir });
+    // Try to generate the output
+    await Deno.mkdir(outputDir, {
+        recursive: true,
+    });
+    const outputPath = join(await Deno.realPath(outputDir), "");
+    const writtenFiles = await writeFiles({
+        db,
+        outputPath,
+        layoutArticle: layoutArticle?.bind(null, db),
+        rootDir,
+    });
 
-    if (opts.removeExtraOutputFiles) {
+    if (cleanOutput) {
         await removeExtraOutputFiles(outputPath, writtenFiles);
     }
 
@@ -116,7 +121,6 @@ async function writeFiles({
     layoutArticle?: (row: ArticleRow) => Promise<string>;
 }) {
     const encoder = new TextEncoder();
-    // const promisePool = new PromisePool(16);
     let articleWorkers: Promise<string>[] = [];
     let resourceWorkers: Promise<string>[] = [];
     let writtenArticles = [] as string[];

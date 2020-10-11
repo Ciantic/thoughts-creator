@@ -1,8 +1,8 @@
-// @deno-types="https://servestjs.org/@v1.1.3/types/react/index.d.ts"
+// @deno-types="https://servestjs.org/@v1.1.6/types/react/index.d.ts"
 import React from "https://dev.jspm.io/react/index.js";
 
-// @deno-types="https://servestjs.org/@v1.1.3/types/react-dom/server/index.d.ts"
-import ReactDOMServer from "https://jspm.dev/react-dom/server.js";
+// @deno-types="https://servestjs.org/@v1.1.6/types/react-dom/server/index.d.ts"
+import ReactDOMServer from "https://dev.jspm.io/react-dom/server.js";
 
 type Post = {
     title: string;

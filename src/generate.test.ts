@@ -26,10 +26,10 @@ Deno.test("build db works", async () => {
         articleDir: "./examples/articles/",
         outputDir: "./.out.test/",
         rootDir: "./examples/layout/",
-        layoutArticle: async (row) => {
+        layoutArticle: async (db, row) => {
             return `<html><head><link href="/style.css" /><body>${row.html}</body>`;
         },
-        removeExtraOutputFiles: true,
+        cleanOutput: true,
     });
     const articles = db.articles.getFrom(new Date("2020-01-01"));
     const resources = db.resources.getFrom(new Date("2020-01-01"));
