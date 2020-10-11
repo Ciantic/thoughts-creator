@@ -1,10 +1,10 @@
-import { parse } from "https://deno.land/std/flags/mod.ts";
-import docopt, { DocOptions } from "https://deno.land/x/docopt@v1.0.1/src/docopt.ts";
+import docopt from "https://deno.land/x/docopt@v1.0.1/src/docopt.ts";
 import { generate, createDatabase } from "./build.ts";
-import { getRecursivelyFilesWithExt } from "./utils/fs.ts";
 
 const doc = `
 Build markdown blog 0.0.1
+
+Reads articles from a list of markdown files, creates a static HTML site. This generator relies on 
 
 Usage:
   ${import.meta.url} [options]

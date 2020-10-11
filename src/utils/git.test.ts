@@ -6,12 +6,12 @@ import {
 import { gitLastEdit, gitCreated } from "./git.ts";
 
 Deno.test("gitLastEdit: works", async () => {
-    let result = await gitLastEdit("./examples/post01.md");
+    let result = await gitLastEdit("./examples/articles/post01.md");
     assertEquals(result, new Date("2020-09-06T22:52:10.000Z"));
 });
 
 Deno.test("gitCreated: works", async () => {
-    let result = await gitCreated("./examples/post01.md");
+    let result = await gitCreated("./examples/articles/post01.md");
     assertEquals(result, new Date("2020-09-06T22:52:10.000Z"));
 });
 

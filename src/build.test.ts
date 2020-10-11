@@ -25,9 +25,9 @@ Deno.test("build db works", async () => {
 
     const gen = await generate({
         db: db,
-        articleDir: "./examples/",
+        articleDir: "./examples/articles/",
         outputDir: "./.out.test/",
-        rootDir: "./examples/",
+        rootDir: "./examples/layout/",
         layoutArticle: async (row) => {
             return `<body>${row.html}</body>`;
         },
@@ -63,8 +63,8 @@ Deno.test("build db works", async () => {
     assertEquals(resources.result, [
         {
             id: 1,
-            localPath: join(await Deno.realPath("./examples/res01.svg"), ""),
-            modifiedOnDisk: (await Deno.stat("./examples/res01.svg")).mtime,
+            localPath: join(await Deno.realPath("./examples/articles/res01.svg"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/articles/res01.svg")).mtime,
             serverPath: "2020/10/post02/res01.svg",
         },
     ] as ResourceRow[]);
@@ -79,8 +79,8 @@ Deno.test("build db works", async () => {
             // Git modified
             modified: new Date("2020-09-06T22:52:10.000Z"),
 
-            modifiedOnDisk: (await Deno.stat("./examples/post01.md")).mtime,
-            localPath: join(await Deno.realPath("./examples/post01.md"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/articles/post01.md")).mtime,
+            localPath: join(await Deno.realPath("./examples/articles/post01.md"), ""),
             hash: "",
             serverPath: "2020/09/post01/",
             html: articles.result[0].html,
@@ -94,8 +94,8 @@ Deno.test("build db works", async () => {
             // Git modified
             modified: new Date("2020-10-03T16:31:11.000Z"),
 
-            modifiedOnDisk: (await Deno.stat("./examples/post02.md")).mtime,
-            localPath: join(await Deno.realPath("./examples/post02.md"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/articles/post02.md")).mtime,
+            localPath: join(await Deno.realPath("./examples/articles/post02.md"), ""),
             hash: "",
             serverPath: "2020/10/post02/",
             html: articles.result[1].html,
