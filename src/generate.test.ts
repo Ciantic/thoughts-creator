@@ -67,8 +67,8 @@ Deno.test("build db works", async () => {
         },
         {
             id: 2,
-            modifiedOnDisk: new Date("2020-10-11T17:15:39.083Z"),
-            localPath: "C:\\Source\\Blog\\simples\\examples\\layout\\style.css",
+            localPath: join(await Deno.realPath("./examples/layout/style.css"), ""),
+            modifiedOnDisk: (await Deno.stat("./examples/layout/style.css")).mtime,
             serverPath: "/style.css",
         },
     ] as ResourceRow[]);
