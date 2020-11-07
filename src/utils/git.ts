@@ -1,6 +1,9 @@
+import { dirname } from "https://deno.land/std/path/mod.ts";
+
 async function gitDate(file: string, flag: string = "") {
     const p = Deno.run({
         cmd: ["git", "log", "-1", flag, "--pretty=format:%ci", file].filter((v) => v),
+        cwd: dirname(file),
         stdout: "piped",
         stderr: "piped",
     });
