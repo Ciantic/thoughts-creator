@@ -45,13 +45,13 @@ Deno.test("build db works", async () => {
 
     assertStrContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
     assertStrContains(
-        await Deno.readTextFile("./.out.test/2020/10/post01/index.html"),
+        await Deno.readTextFile("./.out.test/articles/post01/index.html"),
         `<body><h1 id="example-post">Example post</h1>`
     );
 
     assertStrContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
     assertStrContains(
-        await Deno.readTextFile("./.out.test/2020/10/post02/index.html"),
+        await Deno.readTextFile("./.out.test/articles/post02/index.html"),
         `<body><h1 id="second-post">Second post</h1>`
     );
 
@@ -63,7 +63,7 @@ Deno.test("build db works", async () => {
             id: 1,
             localPath: join(await Deno.realPath("./examples/articles/res01.svg"), ""),
             modifiedOnDisk: (await Deno.stat("./examples/articles/res01.svg")).mtime,
-            serverPath: "2020/10/post02/res01.svg",
+            serverPath: "articles/post02/res01.svg",
         },
         {
             id: 2,
@@ -86,7 +86,7 @@ Deno.test("build db works", async () => {
             modifiedOnDisk: (await Deno.stat("./examples/articles/post01.md")).mtime,
             localPath: join(await Deno.realPath("./examples/articles/post01.md"), ""),
             hash: "",
-            serverPath: "2020/10/post01/",
+            serverPath: "articles/post01/",
             html: articles.result[0].html,
         },
         {
@@ -101,7 +101,7 @@ Deno.test("build db works", async () => {
             modifiedOnDisk: (await Deno.stat("./examples/articles/post02.md")).mtime,
             localPath: join(await Deno.realPath("./examples/articles/post02.md"), ""),
             hash: "",
-            serverPath: "2020/10/post02/",
+            serverPath: "articles/post02/",
             html: articles.result[1].html,
         },
     ] as ArticleRow[]);

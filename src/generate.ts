@@ -250,7 +250,7 @@ async function buildArticle(opts: { db: DbContext; articleFile: File; rootDir: s
     const year = created.getFullYear();
     const month = (created.getMonth() + 1).toString().padStart(2, "0");
     const filename = basename(articleFile.path, ".md");
-    const serverpath = `${year}/${month}/${filename}/`;
+    const serverpath = `articles/${filename}/`;
     const html = markdown_result.body;
     db.articles.add({
         created: created,
