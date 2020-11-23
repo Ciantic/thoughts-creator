@@ -8,7 +8,7 @@ import { markdown } from "./markdown.ts";
 
 const example = `---
 foo: yea
-published: 2020-01-01 12:30 +03:00
+date: 2020-01-01 12:30 +03:00
 ---
 # Example header
 
@@ -28,7 +28,7 @@ const expectedBody = `<h1 id=\"example-header\">Example header</h1>
 
 Deno.test("markdown works", () => {
     const result = markdown(example);
-    assertEquals(result.published, new Date("2020-01-01T09:30:00.000Z"));
+    assertEquals(result.date, new Date("2020-01-01T09:30:00.000Z"));
     assertEquals(result.body, expectedBody);
     assertEquals(result.body.length, expectedBody.length);
 });

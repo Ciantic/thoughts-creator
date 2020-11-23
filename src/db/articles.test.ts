@@ -6,7 +6,7 @@ import {
 import { DbContext } from "./mod.ts";
 import type { ArticleRow } from "./articles.ts";
 import { ArticleRepository } from "./articles.ts";
-import { DB } from "https://deno.land/x/sqlite@v2.3.0/src/db.ts";
+import { DB } from "https://deno.land/x/sqlite/mod.ts";
 
 Deno.test("articles createSchema", () => {
     const db = new DB(":memory:");

@@ -31,12 +31,16 @@ export function markdown(fileContents: string) {
         body = parsed.body;
     }
 
-    const published = Date.parse(attributes.published);
+    const pubDate = Date.parse(attributes.date);
     const parsed = Marked.parse(body);
 
     return {
-        published: isNaN(published) ? null : new Date(published),
+        date: isNaN(pubDate) ? null : new Date(pubDate),
+        title: attributes.title || "",
+        description: attributes.description || "",
+        oldUrl: attributes.oldUrl || null,
         body: parsed.content,
+        tags: attributes.tags || [],
     };
 }
 
