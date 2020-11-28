@@ -27,7 +27,7 @@ Deno.test("build db works", async () => {
         outputDir: "./.out.test/",
         rootDir: "./examples/layout/",
         layoutArticle: async (db, row) => {
-            return `<html><head><link href="/style.css" /><body>${row.html}</body>`;
+            return `<html><head><link href="/style.css" /><body><h1>${row.title}</h1>${row.html}</body>`;
         },
         cleanOutput: true,
     });
@@ -43,16 +43,16 @@ Deno.test("build db works", async () => {
         throw new Error(articles.error);
     }
 
-    assertStrContains(articles.result[0].html, `<h1 id="example-post">Example post</h1>`);
+    assertStrContains(articles.result[0].html, `<p>Lorem ipsum dolor sit amet`);
     assertStrContains(
         await Deno.readTextFile("./.out.test/articles/post01/index.html"),
-        `<body><h1 id="example-post">Example post</h1>`
+        `<body><h1>First post</h1>`
     );
 
-    assertStrContains(articles.result[1].html, `<h1 id="second-post">Second post</h1>`);
+    assertStrContains(articles.result[1].html, `<p>Lorem ipsum dolor sit amet!`);
     assertStrContains(
         await Deno.readTextFile("./.out.test/articles/post02/index.html"),
-        `<body><h1 id="second-post">Second post</h1>`
+        `<body><h1>Second post</h1>`
     );
 
     // Ensure that cleaning extra files works
@@ -87,6 +87,7 @@ Deno.test("build db works", async () => {
             localPath: join(await Deno.realPath("./examples/articles/post01.md"), ""),
             hash: "",
             serverPath: "articles/post01/",
+            title: "First post",
             html: articles.result[0].html,
         },
         {
@@ -102,6 +103,7 @@ Deno.test("build db works", async () => {
             localPath: join(await Deno.realPath("./examples/articles/post02.md"), ""),
             hash: "",
             serverPath: "articles/post02/",
+            title: "Second post",
             html: articles.result[1].html,
         },
     ] as ArticleRow[]);

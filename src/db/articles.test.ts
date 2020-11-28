@@ -27,6 +27,7 @@ Deno.test("articles add", () => {
             modified: new Date(),
             modifiedOnDisk: new Date(),
             serverPath: "post01.html",
+            title: "",
             html: "",
         }),
         {
@@ -50,6 +51,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2019-01-02"),
         modifiedOnDisk: new Date("2019-01-03"),
         serverPath: "post01.html",
+        title: "older post",
         html: "first",
     });
 
@@ -61,6 +63,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2020-01-02"),
         modifiedOnDisk: new Date("2020-01-03"),
         serverPath: "post02.html",
+        title: "newer post",
         html: "second",
     });
 
@@ -76,6 +79,7 @@ Deno.test("articles getFrom", () => {
         modified: new Date("2020-01-02"),
         modifiedOnDisk: new Date("2020-01-03"),
         serverPath: "post02.html",
+        title: "newer post",
         html: "second",
     } as ArticleRow);
     db.close(true);
@@ -94,6 +98,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
         modified: new Date("2019-01-02"),
         modifiedOnDisk: new Date("2019-01-03"),
         serverPath: "post01.html",
+        title: "older post",
         html: "",
     });
 
@@ -105,6 +110,7 @@ Deno.test("articles getMaxModifiedOnDisk", () => {
         modified: new Date("2020-01-02"),
         modifiedOnDisk: new Date("2020-01-03"),
         serverPath: "post02.html",
+        title: "newer post",
         html: "",
     });
 
@@ -129,6 +135,7 @@ Deno.test("articles cleanNonExisting", () => {
         modified: new Date("2019-01-02"),
         modifiedOnDisk: new Date("2019-01-03"),
         serverPath: "post01.html",
+        title: "title",
         html: "",
     });
 
@@ -140,6 +147,7 @@ Deno.test("articles cleanNonExisting", () => {
         modified: new Date("2020-01-02"),
         modifiedOnDisk: new Date("2020-01-03"),
         serverPath: "post02.html",
+        title: "title",
         html: "",
     });
 
@@ -147,6 +155,6 @@ Deno.test("articles cleanNonExisting", () => {
     if (!res.result) {
         throw new Error(res.error);
     }
-    assertEquals(1, articles.getFrom(new Date("2000-01-01")).result?.length);
+    assertEquals(articles.getFrom(new Date("2000-01-01")).result?.length, 1);
     db.close(true);
 });

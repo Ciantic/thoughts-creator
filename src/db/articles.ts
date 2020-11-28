@@ -10,6 +10,7 @@ export interface ArticleRow {
     modifiedOnDisk: Date;
     localPath: string;
     serverPath: string;
+    title: string;
     html: string;
 }
 
@@ -22,7 +23,17 @@ const table = "article";
  * `SELECT * FROM table` result mapper
  */
 function* mapStar(rows: Rows): Generator<ArticleRow> {
-    for (const [id, hash, created, modified, modifiedOnDisk, file, serverPath, html] of rows) {
+    for (const [
+        id,
+        hash,
+        created,
+        modified,
+        modifiedOnDisk,
+        file,
+        serverPath,
+        title,
+        html,
+    ] of rows) {
         yield {
             id: +id,
             hash: hash,
@@ -31,6 +42,7 @@ function* mapStar(rows: Rows): Generator<ArticleRow> {
             modifiedOnDisk: new Date(modifiedOnDisk),
             localPath: file,
             serverPath: serverPath,
+            title: title,
             html: html,
         };
     }
@@ -50,6 +62,7 @@ export class ArticleRepository {
                 ${f.modifiedOnDisk}   DATETIME       NOT NULL,
                 ${f.localPath}        VARCHAR (2048) NOT NULL UNIQUE,
                 ${f.serverPath}       VARCHAR (2048) NOT NULL UNIQUE,
+                ${f.title}            VARCHAR (2048) NOT NULL DEFAULT "",
                 ${f.html}             VARCHAR (10048) NOT NULL DEFAULT ""
             );
             `
@@ -60,7 +73,16 @@ export class ArticleRepository {
         db: this.db,
         conflict: f.localPath,
         table: table,
-        args: [f.hash, f.created, f.modified, f.modifiedOnDisk, f.localPath, f.serverPath, f.html],
+        args: [
+            f.hash,
+            f.created,
+            f.modified,
+            f.modifiedOnDisk,
+            f.localPath,
+            f.serverPath,
+            f.title,
+            f.html,
+        ],
     });
 
     cleanNonExisting(existingArticleFiles: string[]) {

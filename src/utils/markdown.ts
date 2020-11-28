@@ -22,13 +22,24 @@ export type MarkdownResult = ReturnType<typeof markdown>;
 
 export function markdown(fileContents: string) {
     let body = fileContents;
+    let title = "";
     let attributes: any = {};
 
     // If the file has a front matter
     if (fileContents.startsWith("---")) {
         const parsed = parseAsFrontMatter(fileContents);
         attributes = parsed.attributes;
+        title = attributes.title;
         body = parsed.body;
+    }
+
+    // Read the first heading if front matter doesn't have title
+    if (!title) {
+        let firstHeading = /#(.*)/.exec(body);
+        if (firstHeading) {
+            title = firstHeading[1].trim();
+            body = body.replace(/#(.*)/, "");
+        }
     }
 
     const pubDate = Date.parse(attributes.date);
@@ -36,7 +47,7 @@ export function markdown(fileContents: string) {
 
     return {
         date: isNaN(pubDate) ? null : new Date(pubDate),
-        title: attributes.title || "",
+        title: title,
         description: attributes.description || "",
         oldUrl: attributes.oldUrl || null,
         body: parsed.content,

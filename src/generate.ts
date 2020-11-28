@@ -259,6 +259,7 @@ async function buildArticle(opts: { db: DbContext; articleFile: File; rootDir: s
         modifiedOnDisk: mtime,
         localPath: realpath,
         serverPath: serverpath,
+        title: markdown_result.title,
         html: html,
     });
     await buildResources({
