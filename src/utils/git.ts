@@ -33,7 +33,7 @@ async function gitDate(file: string, flag: string = "") {
  * @param file File
  */
 export async function gitCreated(file: string) {
-    return await gitDate(file, "--reverse");
+    return await gitDate(file, "--diff-filter=A");
 }
 
 /**

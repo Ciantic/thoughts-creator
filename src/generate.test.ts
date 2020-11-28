@@ -81,7 +81,7 @@ Deno.test("build db works", async () => {
             created: new Date("2020-10-11T17:18:37.000Z"),
 
             // Git modified
-            modified: new Date("2020-10-11T17:18:37.000Z"),
+            modified: new Date("2020-11-28T00:10:02.000Z"),
 
             modifiedOnDisk: (await Deno.stat("./examples/articles/post01.md")).mtime,
             localPath: join(await Deno.realPath("./examples/articles/post01.md"), ""),

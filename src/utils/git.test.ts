@@ -7,7 +7,7 @@ import { gitLastEdit, gitCreated } from "./git.ts";
 
 Deno.test("gitLastEdit: works", async () => {
     let result = await gitLastEdit("./examples/articles/post01.md");
-    assertEquals(result, new Date("2020-10-11T17:18:37.000Z"));
+    assertEquals(result, new Date("2020-11-28T00:10:02.000Z"));
 });
 
 Deno.test("gitCreated: works", async () => {
