@@ -10,23 +10,36 @@
             "args": ["test", "-A"]
         },
         {
-            "label": "build",
+            "label": "test reload",
             "type": "shell",
             "command": "deno",
-            "args": [
-                "run",
-                "--allow-read",
-                "--allow-write",
-                "--allow-run",
-                "generate.ts",
-                ".\\examples"
-            ]
-        },
-        {
-            "label": "build reload",
-            "type": "shell",
-            "command": "deno",
-            "args": ["run", "--reload", "--allow-read", "--allow-run", "generate.ts", ".\\examples"]
+            "args": ["test", "-A", "--reload"]
         }
+        // {
+        //     "label": "build",
+        //     "type": "shell",
+        //     "command": "deno",
+        //     "args": [
+        //         "run",
+        //         "--allow-read",
+        //         "--allow-write",
+        //         "--allow-run",
+        //         "src/generate.ts",
+        //         ".\\examples"
+        //     ]
+        // },
+        // {
+        //     "label": "build reload",
+        //     "type": "shell",
+        //     "command": "deno",
+        //     "args": [
+        //         "run",
+        //         "--reload",
+        //         "--allow-read",
+        //         "--allow-run",
+        //         "src/generate.ts",
+        //         ".\\examples"
+        //     ]
+        // }
     ]
 }

@@ -1,4 +1,4 @@
-import { recursiveReaddir as rec } from "https://deno.land/x/recursive_readdir@v2.0.0/mod.ts";
+import { recursiveReaddir as rec } from "https://deno.land/x/recursive_readdir/mod.ts";
 import { join, extname } from "https://deno.land/std/path/mod.ts";
 
 // export const recursiveReaddir = recursiveReaddir;

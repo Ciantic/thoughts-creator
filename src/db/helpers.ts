@@ -1,4 +1,4 @@
-import type { DB } from "https://deno.land/x/sqlite/mod.ts";
+import { DB } from "./deps.ts";
 
 export function dbError<T>(f: () => T) {
     try {

@@ -1,4 +1,4 @@
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
+import { DB } from "./deps.ts";
 import { ArticleRepository } from "./articles.ts";
 import { ResourceRepository } from "./resources.ts";
 

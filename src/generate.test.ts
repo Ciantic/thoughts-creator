@@ -1,7 +1,7 @@
 import {
     assert,
     assertEquals,
-    assertStrContains,
+    assertStringIncludes,
     assertThrows,
 } from "https://deno.land/std/testing/asserts.ts";
 import { generate } from "./generate.ts";
@@ -16,7 +16,6 @@ Deno.test("build db works", async () => {
     try {
         await Deno.writeTextFile(".out.test/foo.html", "");
     } catch (e) {}
-
     try {
         await Deno.remove(".cache.test.db");
     } catch (e) {}
@@ -43,14 +42,14 @@ Deno.test("build db works", async () => {
         throw new Error(articles.error);
     }
 
-    assertStrContains(articles.result[0].html, `<p>Lorem ipsum dolor sit amet`);
-    assertStrContains(
+    assertStringIncludes(articles.result[0].html, `<p>Lorem ipsum dolor sit amet`);
+    assertStringIncludes(
         await Deno.readTextFile("./.out.test/articles/post01/index.html"),
         `<body><h1>First post</h1>`
     );
 
-    assertStrContains(articles.result[1].html, `<p>Lorem ipsum dolor sit amet!`);
-    assertStrContains(
+    assertStringIncludes(articles.result[1].html, `<p>Lorem ipsum dolor sit amet!`);
+    assertStringIncludes(
         await Deno.readTextFile("./.out.test/articles/post02/index.html"),
         `<body><h1>Second post</h1>`
     );

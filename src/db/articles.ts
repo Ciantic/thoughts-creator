@@ -1,5 +1,4 @@
-import type { DB } from "https://deno.land/x/sqlite/mod.ts";
-import type { Rows } from "https://deno.land/x/sqlite/src/rows.ts";
+import { DB, Rows } from "./deps.ts";
 import { dbError, fields, upsert } from "./helpers.ts";
 
 export interface ArticleRow {
