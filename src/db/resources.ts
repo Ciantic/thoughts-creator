@@ -43,12 +43,15 @@ export class ResourceRepository {
         );
     }
 
-    add = upsert<ResourceInsertRow>({
-        table: table,
-        conflict: f.localPath,
-        args: [f.modifiedOnDisk, f.localPath, f.serverPath],
-        db: this.db,
-    });
+    add(values: ResourceInsertRow) {
+        return upsert({
+            values: values,
+            db: this.db,
+            table: table,
+            conflict: f.localPath,
+            args: [f.modifiedOnDisk, f.localPath, f.serverPath],
+        });
+    }
 
     getAll() {
         return dbError(() => {

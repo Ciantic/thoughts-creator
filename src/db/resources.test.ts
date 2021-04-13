@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.63.0/testing/asserts.ts";
 import { ResourceRepository, ResourceRow } from "./resources.ts";
-import { DB } from "https://deno.land/x/sqlite/mod.ts";
+import { DB } from "./deps.ts";
 
 Deno.test("resources createSchema", () => {
     const db = new DB(":memory:");

@@ -27,11 +27,13 @@ export function fields<T>() {
 }
 
 export function upsert<T>({
+    values,
     db,
     table,
-    conflict: conflict_sql,
+    conflict,
     args,
 }: {
+    values: T;
     db: DB;
     table: string;
     conflict: keyof T;
@@ -42,18 +44,18 @@ export function upsert<T>({
     const update_fields_sql = args.map((f) => `${f} = excluded.${f}`).join(",");
     const sql = `
         INSERT INTO ${table} (${names_sql}) VALUES(${values_sql})
-        ON CONFLICT(${conflict_sql}) DO
+        ON CONFLICT(${conflict}) DO
         UPDATE SET ${update_fields_sql}
     `;
-    return (values: T) =>
-        dbError(() => {
-            db.query(
-                sql,
-                args.map((f) => values[f])
-            );
+    // return (values: T) =>
+    return dbError(() => {
+        db.query(
+            sql,
+            args.map((f) => values[f])
+        );
 
-            return +db.lastInsertRowId;
-        });
+        return +db.lastInsertRowId;
+    });
 }
 
 // export interface ArticleRow {

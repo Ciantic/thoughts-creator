@@ -68,21 +68,24 @@ export class ArticleRepository {
         );
     }
 
-    add = upsert<ArticleInsertRow>({
-        db: this.db,
-        conflict: f.localPath,
-        table: table,
-        args: [
-            f.hash,
-            f.created,
-            f.modified,
-            f.modifiedOnDisk,
-            f.localPath,
-            f.serverPath,
-            f.title,
-            f.html,
-        ],
-    });
+    add(values: ArticleInsertRow) {
+        return upsert({
+            values,
+            db: this.db,
+            table: table,
+            conflict: f.localPath,
+            args: [
+                f.hash,
+                f.created,
+                f.modified,
+                f.modifiedOnDisk,
+                f.localPath,
+                f.serverPath,
+                f.title,
+                f.html,
+            ],
+        });
+    }
 
     cleanNonExisting(existingArticleFiles: string[]) {
         const questionmarks = existingArticleFiles.map(() => "?").join(",");
